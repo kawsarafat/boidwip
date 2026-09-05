@@ -1,0 +1,111 @@
+/* The sidebar brand block. Fills the strip Payload reserves at the top of the
+ * nav via --nav-padding-block-start, which chrome.css zeroes out so this can sit
+ * in it honestly rather than on top of it. Read the sidebar section of
+ * app/(payload)/theme/chrome.css alongside this file: the two halves of the
+ * arithmetic live in different places because one is a CSS module scoped to this
+ * component and the other overrides Payload's own selectors, which a module
+ * cannot reach.
+ *
+ * Colours are --bdw-* only. A hex here would be one theme's value applied to
+ * both, and it would look right in whichever theme it was written in. */
+
+.brand {
+  /* Sticky, not fixed: the block is a flex item inside .nav__scroll, which is the
+   * element that scrolls. With a long collection list the brand would otherwise
+   * scroll away, and the panel would lose its name again exactly when the sidebar
+   * is being used. z-index above the nav links so they pass under it, not through
+   * it. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  gap: var(--bdw-space-2);
+
+  /* Matches the app header's height, so this block's bottom hairline and the one
+   * chrome.css puts under .app-header__content are the same line continued across
+   * the panel. Payload changes --app-header-height at its mid breakpoint; reading
+   * the variable tracks that for free. */
+  min-height: var(--app-header-height);
+  margin-block-end: var(--bdw-space-3);
+
+  /* Bleeds to the sidebar's edges so the fill and the hairline reach them, then
+   * puts the padding back inside. .nav__scroll's inline padding is what these
+   * cancel, and it is declared per breakpoint by Payload, so reading the same two
+   * variables keeps the bleed exact at every width. Setting them would not be
+   * safe (one flat value would beat all three of Payload's); reading them is. */
+  margin-inline: calc(var(--nav-padding-inline-start) * -1)
+    calc(var(--nav-padding-inline-end) * -1);
+  padding-inline: var(--nav-padding-inline-start) var(--nav-padding-inline-end);
+
+  /* Opaque, because content scrolls underneath a sticky element. Same fill as the
+   * sidebar itself (surfaces.css gives .nav --bdw-surface), so the block reads as
+   * part of the sidebar with a rule under it rather than as a card floating in it. */
+  background: var(--bdw-surface);
+  border-block-end: 1px solid var(--bdw-border);
+
+  color: var(--bdw-text);
+  text-decoration: none;
+  transition: background-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.brand:hover {
+  background: var(--bdw-brand-softer);
+  /* Payload's reset puts text-decoration on `a:hover` globally. */
+  text-decoration: none;
+}
+
+/* An inset ring rather than an outline: the block bleeds past .nav__scroll's
+ * padding into a container with `overflow: hidden`, so an outset focus ring would
+ * be clipped on three sides. */
+.brand:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--bdw-brand-ring);
+}
+
+.tile {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  /* BrandMark deliberately sets no size and no radius of its own (see
+   * BrandMark.module.css). The radius here has to track the mark's own rx=14 on a
+   * 64-unit viewBox, or the shadow traces a shape the artwork does not have:
+   * 32 * 14 / 64 = 7. */
+  border-radius: 7px;
+  box-shadow: var(--bdw-shadow-xs);
+}
+
+.words {
+  display: flex;
+  flex-direction: column;
+  /* Two lines of a lockup, not a paragraph: the default line-height gap between
+   * them reads as a list. */
+  gap: 1px;
+  min-width: 0;
+}
+
+.wordmark {
+  font-size: var(--bdw-text-lg);
+  font-weight: var(--bdw-weight-bold);
+  letter-spacing: var(--bdw-tracking-snug);
+  line-height: var(--bdw-leading-tight);
+  /* The sidebar is a fixed 275px and this is a proper noun. Wrapping the
+   * wordmark across two lines is worse than the horizontal clip that cannot happen
+   * at this width anyway. */
+  white-space: nowrap;
+}
+
+/* Tracked capitals are safe here only because the string is English. The same
+ * treatment on Bengali breaks conjuncts apart and interrupts the matra
+ * headstroke, which is why Logo.module.css's tagline forbids it. If this line is
+ * ever translated, the letter-spacing and text-transform have to go with it. */
+.label {
+  font-size: var(--bdw-text-2xs);
+  font-weight: var(--bdw-weight-semibold);
+  letter-spacing: var(--bdw-tracking-caps);
+  line-height: var(--bdw-leading-tight);
+  text-transform: uppercase;
+  color: var(--bdw-text-soft);
+}

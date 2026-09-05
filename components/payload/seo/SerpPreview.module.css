@@ -1,0 +1,119 @@
+/* Live Google-result (SERP) preview for the Chapters editor. Payload theme
+ * tokens and the --bdw-* set only, so it follows the panel's light/dark theme.
+ * The look deliberately imitates a Google desktop result — that recognisability
+ * is the point of the preview — while every colour still resolves through a
+ * theme variable rather than a Google hex, so it is legible in both themes. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bdw-space-3);
+}
+
+.card {
+  padding: var(--bdw-space-4);
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-m);
+  background: var(--bdw-surface);
+  box-shadow: var(--bdw-shadow-sm);
+}
+
+/* The url/breadcrumb line Google prints above the title. */
+.urlRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--base) * 0.4);
+  margin-bottom: calc(var(--base) * 0.25);
+}
+
+.favicon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--base) * 1.1);
+  height: calc(var(--base) * 1.1);
+  border-radius: var(--bdw-radius-pill);
+  background: var(--bdw-brand-softer);
+  color: var(--bdw-brand-strong);
+  font-size: 0.7rem;
+  font-weight: var(--bdw-weight-bold);
+  flex-shrink: 0;
+}
+
+.url {
+  font-size: var(--bdw-text-sm);
+  line-height: 1.3;
+  color: var(--bdw-text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Google renders the clickable title in blue and ~20px. */
+.title {
+  margin: 0;
+  font-size: var(--bdw-text-xl, 1.2857rem);
+  line-height: var(--bdw-leading-snug);
+  font-weight: var(--bdw-weight-normal);
+  color: var(--bdw-brand-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.desc {
+  margin: calc(var(--base) * 0.3) 0 0;
+  font-size: var(--bdw-text-sm);
+  line-height: var(--bdw-leading-normal);
+  color: var(--bdw-text);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.descFallback {
+  color: var(--bdw-text-muted);
+  font-style: italic;
+}
+
+/* The length read-outs under the card. */
+.meters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bdw-space-2) var(--bdw-space-6);
+}
+
+.meter {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--base) * 0.35);
+  font-size: var(--bdw-text-xs);
+  line-height: 1.4;
+  color: var(--bdw-text-muted);
+}
+
+.meterLabel {
+  font-weight: var(--bdw-weight-medium);
+  color: var(--bdw-text-soft);
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--bdw-weight-semibold);
+}
+
+.ok {
+  color: var(--bdw-positive);
+}
+
+.warn {
+  color: var(--bdw-warning);
+}
+
+.hint {
+  font-style: normal;
+  color: var(--bdw-text-muted);
+}

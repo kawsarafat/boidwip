@@ -1,0 +1,1011 @@
+/* Boidwip admin — application shell.
+ *
+ * The frame around the content: the sidebar, the header, the document toolbar,
+ * list views, the login screen, and the layers that float above them (drawers,
+ * modals, toasts). Form controls are in fields.css and breakpoints are in
+ * responsive.css.
+ *
+ * Unlayered, like everything in this directory. See tokens.css for why that is
+ * enough to beat Payload's own rules without !important.
+ *
+ * Two rules of engagement for this file, both learned the hard way:
+ *
+ *  - Restyle, do not re-lay-out. Payload's shell is a grid whose columns are
+ *    driven by --nav-width and a set of state classes
+ *    (.template-default--nav-open, .nav--nav-animate) that its React code
+ *    toggles. Changing colours, borders, radii and spacing inside that grid is
+ *    safe. Changing display, position or grid-template on the shell itself
+ *    fights code we cannot see and breaks the mobile nav.
+ *  - Every selector here was verified to exist in
+ *    node_modules/@payloadcms/{ui,next}/dist/**\/styles.css. A class name that
+ *    does not exist produces no error and no style, which is the same failure
+ *    mode AGENTS.md documents for Tailwind colour tokens. */
+
+/* ---------------------------------------------------------------------------
+ * Sidebar
+ *
+ * Payload's nav is borderless text on the page background, with a 2px bar
+ * (.nav__link-indicator) marking the active link. Given a sidebar full of
+ * Bengali collection labels, that reads as an unstyled list. Below it becomes a
+ * distinct panel with pill-shaped links, which is the single change that most
+ * makes the panel look intentional.
+ * --------------------------------------------------------------------------- */
+
+/* The fill is NOT here. It was `--theme-elevation-50`, one step off the page in
+ * both themes, and surfaces.css then set the same selector to `--bdw-surface` at
+ * equal specificity from a later file, so this declaration only ever lost. It is
+ * gone rather than corrected because two files declaring one property on one
+ * selector is how a theme starts disagreeing with itself. surfaces.css owns which
+ * regions are paper; this file owns the rest of the sidebar. */
+.nav {
+  border-inline-end: 1px solid var(--bdw-border);
+}
+
+/* Payload reserves the top of the sidebar for a brand: `.nav` declares
+ * `--nav-padding-block-start: var(--app-header-height)`, and `.nav__scroll` spends
+ * it as the top of its `padding` shorthand. A stock install leaves that strip
+ * empty. NavBrand (registered as `admin.components.beforeNav`) now fills it, and
+ * it sizes itself off the same `--app-header-height`, so the padding has to go or
+ * the strip would be paid for twice.
+ *
+ * Zeroing it is only safe together with the pointer-events rule below. Read both
+ * before changing either. */
+.nav__scroll {
+  padding-block-start: 0;
+  gap: calc(var(--base) * 0.15);
+}
+
+/* THE REASON THE FIRST NAV LINK WAS NOT CLICKABLE.
+ *
+ * `.nav__header` is Payload's holder for the mobile close button, and it is
+ * `position: absolute; top: 0; width: 100vw; height: var(--app-header-height)`
+ * with a `z-index: 1` child filling it. On a phone that sits over the strip the
+ * brand is in and the button in it is the only thing there, which is correct. On
+ * desktop the button is `display: none` and the box stays: 275px x 56px of
+ * invisible overlay, clipped to the sidebar by `.nav`'s `overflow: hidden`,
+ * covering the brand block and the first row under it.
+ *
+ * That was already true before the brand existed - it was swallowing the first
+ * group heading and the first collection link - and it produces no visible symptom
+ * at all, just a region of the sidebar where clicks land on nothing.
+ *
+ * Ignoring pointer events on the box and restoring them on the button is the whole
+ * fix. The button is the only element `.nav__header` contains, so nothing else
+ * needs them back. */
+.nav__header {
+  pointer-events: none;
+}
+
+.nav__mobile-close {
+  pointer-events: auto;
+}
+
+/* Group headings ("Content", "System"). Small, spaced capitals so they read as
+ * labels rather than as disabled links, which is how 400-grey body text at the
+ * same size as its own children tends to read. */
+.nav-group {
+  margin-bottom: calc(var(--base) * 0.6);
+}
+
+.nav-group__toggle {
+  font-size: var(--bdw-text-2xs);
+  font-weight: var(--bdw-weight-semibold);
+  letter-spacing: var(--bdw-tracking-caps);
+  text-transform: uppercase;
+  color: var(--bdw-text-soft);
+  padding-block: calc(var(--base) * 0.3);
+  padding-inline: calc(var(--base) * 0.5);
+  border-radius: var(--style-radius-s);
+  transition: color var(--bdw-fast) var(--bdw-ease);
+}
+
+.nav__link {
+  border-radius: var(--style-radius-m);
+  padding-block: calc(var(--base) * 0.4);
+  padding-inline: calc(var(--base) * 0.5);
+  color: var(--theme-elevation-650);
+  font-size: var(--bdw-text-md);
+  line-height: var(--bdw-leading-snug);
+  transition:
+    background-color var(--bdw-fast) var(--bdw-ease),
+    color var(--bdw-fast) var(--bdw-ease);
+}
+
+/* Payload underlines nav links on hover. An underline is for links in prose;
+ * for a navigation list it makes the sidebar flicker as the pointer crosses it.
+ * A background change reads as "this row is targetable". */
+.nav__link:hover,
+.nav a.nav__link:hover,
+.nav a.nav__link:focus-visible {
+  text-decoration: none;
+  background: var(--theme-elevation-100);
+  color: var(--theme-text);
+}
+
+.nav__link.active,
+.nav__link:has(.nav__link-indicator) {
+  background: var(--bdw-brand-soft);
+  color: var(--bdw-brand);
+  font-weight: var(--bdw-weight-semibold);
+}
+
+.nav__link.active:hover,
+.nav a.nav__link.active:hover {
+  background: var(--bdw-brand-soft);
+  color: var(--bdw-brand);
+}
+
+html[data-theme="dark"] .nav__link.active,
+html[data-theme="dark"] .nav__link:has(.nav__link-indicator) {
+  /* The 500-weight brand blue on a near-black panel is legible but muddy at
+   * body size. Payload's own dark ramp has a lighter step for exactly this. */
+  color: var(--color-success-300);
+}
+
+/* The active-link bar. Payload positions it at inset-inline-start: -20px, which
+ * was outside a padding-free link and is now inside a pill, so it would sit on
+ * top of the text. Hidden rather than repositioned: the pill already carries the
+ * active state, and two active indicators is one too many. */
+.nav__link-indicator {
+  display: none;
+}
+
+.nav__controls {
+  gap: calc(var(--base) * 0.4);
+  padding-block-start: calc(var(--base) * 0.6);
+  border-block-start: 1px solid var(--bdw-border);
+}
+
+.nav__controls > :first-child {
+  margin-top: calc(var(--base) * 0.5);
+}
+
+/* ---------------------------------------------------------------------------
+ * Shell motion
+ *
+ * Why the panel felt jerky rather than slow: Payload animates the sidebar with a
+ * LINEAR curve in four places, and three of them move the largest element on the
+ * screen. `.template-default` is a grid whose first track is the sidebar width,
+ * and `grid-template-columns` is transitioned from 0 to 275px on open. A linear
+ * curve starts and stops at full speed, so a 275px-wide object appears to jump
+ * into motion and then stop dead - which the eye reads as a dropped frame even at
+ * a duration it would not otherwise notice.
+ *
+ * Only the timing function is overridden. The duration stays Payload's
+ * --nav-trans-time, which tokens.css already repoints at --bdw-slow, and the
+ * property lists stay theirs too, so if a future version transitions something
+ * else here it still gets the right curve. --bdw-ease-out is the strong decelerate
+ * curve: most of the distance is covered early, so the drawer feels like it
+ * arrives rather than travels.
+ *
+ * These four selectors are Payload's, from
+ * node_modules/@payloadcms/next/dist/prod/styles.css. `::before` there is written
+ * `:before`; the two are the same element. */
+.template-default--nav-animate,
+.template-default__wrap::before,
+.template-default--nav-open .template-default__nav-overlay,
+.nav--nav-animate {
+  transition-timing-function: var(--bdw-ease-out);
+}
+
+/* ---------------------------------------------------------------------------
+ * Top bar
+ *
+ * .app-header is transparent until scrolled, when Payload fades in
+ * .app-header__bg (opacity 0 → 1 via .app-header--show-bg). That mechanism is
+ * left alone; this file gives that fill its blur so content scrolling underneath
+ * stays faintly visible instead of being clipped by a hard edge. The colour it
+ * fades in is surfaces.css's, because it has to track the canvas.
+ * --------------------------------------------------------------------------- */
+
+/* NEVER HAND-WRITE `-webkit-backdrop-filter` HERE. This rule and three others in
+ * this file did, standard property first and the prefix after it, which is the
+ * defensive-looking order — and it silently deleted every backdrop blur in the
+ * admin panel.
+ *
+ * Turbopack runs Lightning CSS over these files, and Lightning CSS owns prefixing:
+ * when it finds an author-written `-webkit-` declaration after the standard one it
+ * takes that as the intended output and emits ONLY the prefixed property. This
+ * browser then reports `CSS.supports("-webkit-backdrop-filter", "blur(4px)")` as
+ * false and drops it at parse time, so the emitted rule is literally
+ * `.app-header__bg { }`. Nothing warns: not the build, not the console, and the
+ * element is a transparent overlay whose blur only shows over scrolled content.
+ *
+ * Write the standard property alone and let Lightning CSS add the prefix for
+ * whatever the project's browser targets need. Payload's own compiled CSS is the
+ * proof it does: `-webkit-backdrop-filter` then `backdrop-filter`, both present,
+ * from SCSS that declares one. */
+.app-header__bg {
+  backdrop-filter: saturate(180%) blur(12px);
+}
+
+/* The hairline under the header, and the piece that makes the panel read as one
+ * design rather than a themed sidebar next to an unthemed page.
+ *
+ * It was on .app-header__bg, which is `opacity: 0` until the page is scrolled. So
+ * at rest - the state every view opens in - there was no line anywhere along the
+ * top of the panel, and the header, the canvas and the sidebar's top strip were
+ * three regions of nearly the same colour meeting at no edge. That is what "the
+ * background separation is not right" looks like from the inside.
+ *
+ * .app-header__content is the full-width flex child of the header, and its bottom
+ * edge is the header's, so the line is permanent and continues the one NavBrand
+ * puts under itself in the sidebar: together they are one rule across the whole
+ * width of the panel, at the same y, in both themes. .app-header is `position:
+ * relative`, not sticky, so this cannot end up floating over content. */
+.app-header__content {
+  border-block-end: 1px solid var(--bdw-border);
+}
+
+/* Breadcrumbs. Payload renders these at body size in full-strength text, so the
+ * document title in the trail competes with the <h1> right below it. Muting the
+ * ancestors and keeping the last crumb dark restores the hierarchy. */
+.step-nav {
+  font-size: var(--bdw-text-sm);
+}
+
+.step-nav a {
+  color: var(--theme-elevation-500);
+  text-decoration: none;
+  border-radius: var(--style-radius-s);
+  transition: color var(--bdw-fast) var(--bdw-ease);
+}
+
+.step-nav a:hover {
+  color: var(--bdw-brand);
+  text-decoration: none;
+}
+
+/* The account chip at the trailing end of the header.
+ *
+ * The anchor is Payload's, the disc inside it is ours
+ * (components/payload/branding/AccountAvatar.tsx, registered as `admin.avatar`).
+ * These two rules are the half of that component a CSS module cannot express,
+ * because both states live on the parent:
+ *
+ *  - --bdw-avatar-bg is read by the module for the disc's fill. Passing a variable
+ *    down is the only way a rule on the anchor can restyle a hashed class it cannot
+ *    name, and it is the same "set the variable, not the property" contract Payload
+ *    uses for .btn.
+ *  - the focus ring, because Payload's is
+ *    `.app-header__account:focus-visible:after { border: var(--accessibility-outline);
+ *    inset: 0 }` - a square drawn around what is now a circle, one pixel outside a
+ *    28px disc. Suppressing the pseudo and drawing the ring with box-shadow on the
+ *    anchor itself follows the radius, matching every other focus ring in the panel
+ *    (see fields.css). border-radius on the anchor is what makes it do so: the
+ *    anchor is otherwise a square box shrink-wrapped to the disc. */
+.app-header__account {
+  --bdw-avatar-bg: var(--bdw-brand);
+  border-radius: 50%;
+  transition: box-shadow var(--bdw-fast) var(--bdw-ease);
+}
+
+.app-header__account:hover {
+  --bdw-avatar-bg: var(--bdw-brand-strong);
+}
+
+.app-header__account:focus-visible {
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+/* The pseudo-element ring, suppressed rather than restyled: `border` on a zero-size
+ * absolutely-positioned box is the whole of Payload's ring, so there is nothing to
+ * adjust into a circle that box-shadow above does not already do better. */
+.app-header__account:focus-visible:after {
+  border: 0;
+}
+
+/* The nav toggler: the control in the app header that opens the sidebar (a drawer
+ * on a phone, a collapse on desktop). The tab stop is `.nav-toggler`, which Payload
+ * leaves transparent, and the visible chip is the `.hamburger` div it wraps —
+ * Payload fills that with `--theme-bg` and rings it with `--theme-elevation-150`, so
+ * it reads as a stock control sitting on the themed header rather than part of it.
+ * Repainting the chip with the same surface, border and hover the account chip and
+ * buttons already use ties it into the chrome. The same `.hamburger` is the close
+ * button inside the open drawer (NavHamburger wraps `<Hamburger isActive>`), so it
+ * inherits the surface too; only the hover/focus, which hang off `.nav-toggler`,
+ * are specific to the opener. */
+.hamburger {
+  background-color: var(--bdw-surface);
+  color: var(--bdw-text);
+  box-shadow: 0 0 0 1px var(--bdw-border);
+  border-radius: var(--style-radius-s);
+  transition:
+    background-color var(--bdw-fast) var(--bdw-ease),
+    box-shadow var(--bdw-fast) var(--bdw-ease),
+    color var(--bdw-fast) var(--bdw-ease);
+}
+
+.nav-toggler:hover .hamburger {
+  background-color: var(--bdw-surface-sunken);
+  box-shadow: 0 0 0 1px var(--bdw-border-strong);
+  color: var(--bdw-brand);
+}
+
+/* The focus ring belongs on the button, not the chip, so it follows the real tab
+ * stop and matches every other ring in the panel (see .app-header__account and
+ * fields.css). Payload's `.nav-toggler` is border- and background-free, so it has
+ * nothing of its own to suppress. Radius matches the chip so the ring stays
+ * concentric with the fill, since the button is shrink-wrapped to it. */
+.nav-toggler {
+  border-radius: var(--style-radius-s);
+  transition: box-shadow var(--bdw-fast) var(--bdw-ease);
+}
+
+.nav-toggler:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+/* The docked collapse chevron, moved off the logo.
+ *
+ * Payload floats a second toggler — `.template-default__nav-toggler-wrapper`, a
+ * sticky, height:0, 60px-wide column pinned at the sidebar's top-left corner
+ * (z-index var(--z-modal), above everything). With the stock nav that space is
+ * empty, so a chevron centered in it reads as "collapse the sidebar". But this
+ * project fills that strip with the custom NavBrand tile (beforeNav), so the
+ * chevron lands ON TOP of the logo — a collision made the default view by the
+ * NavDefaultOpen provider, which now docks the nav open on desktop.
+ *
+ * When docked (the wrapper is a PRECEDING sibling of `.template-default`, which
+ * carries `--nav-open` only while docked/open), stretch the wrapper across the
+ * full sidebar width and push the chevron to its right edge, clear of the logo.
+ * Scoped to `--nav-open` via `:has(~ …)` so the COLLAPSED state is untouched:
+ * there the strip has no logo and the top-left chevron is the correct reopen
+ * button. No `align-items` — the wrapper is height:0, so centering would pull
+ * the 24px chevron half off the top of the screen; Payload's default keeps it
+ * at the header's own vertical center. */
+.template-default__nav-toggler-wrapper:has(~ .template-default--nav-open) {
+  width: var(--nav-width);
+  justify-content: flex-end;
+  padding-inline-end: calc(var(--base) * 0.8);
+}
+
+/* ---------------------------------------------------------------------------
+ * Document view: header, tabs, save bar
+ * --------------------------------------------------------------------------- */
+
+.doc-header__title {
+  letter-spacing: var(--bdw-tracking-tight);
+}
+
+.doc-tabs__tabs {
+  gap: calc(var(--base) * 0.75);
+  border-block-end: 1px solid var(--bdw-border);
+}
+
+/* The scroll hint at the end of the tab row is one of the five fade-masks in
+ * surfaces.css: Payload fades it to --theme-bg, which is white, and the row is
+ * transparent over the canvas. */
+
+/* A tab is not one element from tab to tab. The ones you can click are anchors --
+ * .doc-tab IS the <a> -- and the current one is a <div> that Payload marks
+ * .btn--disabled so it cannot be clicked back to. Neither contains an anchor, which
+ * is why every rule here used to target `.doc-tab a` and style nothing whatsoever:
+ * the tab row was raw Payload, on a screen where the rest of the document view is
+ * not.
+ *
+ * So the treatment goes on .doc-tab, and the colours go through Payload's own button
+ * variables rather than the properties, the way fields.css does it -- a tab is a .btn
+ * variant, and .btn reads --bg-color / --hover-bg / --color / --hover-color for its
+ * own background and text. Setting the variables leaves its padding, radius and
+ * focus ring alone; setting the properties would have to restate all three. */
+.doc-tab {
+  --color: var(--theme-elevation-500);
+  --hover-color: var(--bdw-brand);
+  --hover-bg: var(--bdw-brand-softer);
+  /* Square at the bottom, because the tab's lower edge sits exactly on the row's
+   * border-block-end and a rounded corner there leaves a notch in the line. */
+  border-radius: var(--style-radius-s) var(--style-radius-s) 0 0;
+  transition:
+    color var(--bdw-fast) var(--bdw-ease),
+    background-color var(--bdw-fast) var(--bdw-ease),
+    box-shadow var(--bdw-fast) var(--bdw-ease);
+}
+
+/* Payload fills the active tab with --theme-elevation-100, which is the same colour
+ * as the canvas it stands on: an invisible fill doing the job of the state that
+ * matters most in the row. The brand bar replaces it.
+ *
+ * An inset shadow rather than a border-bottom: a border changes the element's box
+ * and shifts the tab row by a pixel when the active tab moves. --hover-* are pinned
+ * to the resting values because the active tab is inert, so a hover response on it
+ * is an invitation to click something that will not respond. */
+.doc-tab--active {
+  --bg-color: transparent;
+  --color: var(--bdw-brand);
+  --hover-bg: transparent;
+  --hover-color: var(--bdw-brand);
+  box-shadow: inset 0 -2px 0 0 var(--bdw-brand);
+}
+
+/* The weight lives on the label, not on --btn-font-weight, because fields.css sets
+ * that variable on .btn at equal specificity and is imported after this file. The
+ * colour is repeated here for the same reason it is set as a variable above: the
+ * label carries its own colour, so it does not inherit the tab's. */
+.doc-tab--active .doc-tab__label {
+  color: var(--bdw-brand);
+  font-weight: var(--bdw-weight-semibold);
+}
+
+/* The save/publish bar and the meta strip below it (Status / Last modified /
+ * Created). Sticky by Payload's own rules; this only gives it a surface, so that
+ * content scrolling behind it does not appear to pass through the buttons. No
+ * `-webkit-` companion: see the note on .app-header__bg.
+ *
+ * Faded to the CANVAS, not to `--theme-bg` (white): the bar sits on the tinted
+ * canvas, and Payload's white left a near-white strip reading as its own panel
+ * on the page rather than as part of it. Matching the canvas at the same 88% /
+ * blur as .app-header__bg lets the strip read as page, not paper. The meta
+ * strip's own fade (`.doc-controls__meta::after` in surfaces.css) follows this
+ * to the canvas for the same reason. */
+.doc-controls__wrapper {
+  background: color-mix(in srgb, var(--bdw-canvas) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.doc-controls__content {
+  border-block-end: 1px solid var(--bdw-border);
+}
+
+.doc-controls__divider {
+  background: var(--bdw-border);
+}
+
+/* The Status meta item in the document header.
+ *
+ * Payload renders it as `.doc-controls__status .status`, whose value-wrap holds
+ * a muted "Status:" label and a bold value (Draft / Published / Changed). At
+ * rest that read as plain text no different from the "Last modified" pair beside
+ * it, which is what made the row look flat and undifferentiated. There is no
+ * per-state class in the markup — the state (draft/changed/published) is computed
+ * in JS and never reaches an attribute — so this gives the item one badge
+ * treatment rather than a colour per state: a bordered pill on a subtle fill,
+ * enough to read as a status chip at a glance and to stand apart from the
+ * timestamp pairs. The revert `.status__action` stays outside the pill. */
+.doc-controls__status .status__value-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: calc(var(--base) * 0.2) calc(var(--base) * 0.55);
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--bdw-radius-pill);
+  background: var(--bdw-surface-sunken);
+}
+
+.doc-controls__status .status__label {
+  font-size: var(--bdw-text-xs);
+  font-weight: var(--bdw-weight-semibold);
+  letter-spacing: var(--bdw-tracking-caps);
+  text-transform: uppercase;
+  color: var(--bdw-text-muted);
+}
+
+.doc-controls__status .status__value {
+  font-weight: var(--bdw-weight-semibold);
+  color: var(--bdw-text);
+}
+
+/* ---------------------------------------------------------------------------
+ * List views
+ *
+ * The default table is zebra-striped with square corners and no outer edge, so
+ * on a white page it floats. Wrapping it in a bordered card and replacing the
+ * stripes with row separators is both calmer and easier to scan across, which
+ * matters here because the Chapters list is the screen an editor opens most.
+ * --------------------------------------------------------------------------- */
+
+.table {
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-m);
+  background: var(--bdw-surface);
+  box-shadow: var(--bdw-shadow-xs);
+  overflow: hidden;
+  /* Payload sets overflow:auto for horizontal scrolling on narrow screens.
+   * hidden would clip that, so it is restored at the wrapper in
+   * responsive.css rather than here. */
+  overflow-x: auto;
+}
+
+.table thead {
+  color: var(--theme-elevation-500);
+  background: var(--bdw-surface-raised);
+}
+
+.table thead th {
+  font-size: var(--bdw-text-xs);
+  font-weight: var(--bdw-weight-semibold);
+  letter-spacing: var(--bdw-tracking-caps);
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-block-end: 1px solid var(--bdw-border);
+}
+
+/* ---------------------------------------------------------------------------
+ * Why the Chapters list stopped fitting, and the two rules that fix it
+ *
+ * The nav is now docked open by default on desktop (components/payload/nav/
+ * NavDefaultOpen.tsx), which permanently removes 275px of `--nav-width` from the
+ * content column. Chapters shows six data columns plus the select checkbox, and
+ * at that width they no longer fit: the table's own `overflow-x: auto` turned
+ * into a horizontal scrollbar an editor has to drag every time they scan the
+ * list. Payload's default is not wrong, it is just sized for a wider column than
+ * a docked sidebar leaves.
+ *
+ * Two floors were holding the table wider than its content needs, and neither is
+ * load-bearing here:
+ *
+ *  1. `min-width: 150px` on every cell. That is a *floor*, not a width, so a
+ *     column showing "Draft" or an em dash still claimed 150px. Dropping it lets
+ *     each column ask for what it actually renders and gives the surplus to the
+ *     title. It must be `0` and not `unset`: `unset` on `min-width` computes to
+ *     `auto`, which for a table cell resolves to min-content and would leave the
+ *     floor roughly where it was. Written against `.table th`/`td` rather than
+ *     with a `:not()` guard because Payload's own
+ *     `.collection-list .table table .cell-_select { min-width: unset }` is not in
+ *     conflict with a `0` -- both leave the checkbox column on its declared
+ *     `width: var(--base)`, measured at 50px before and after. (A blanket
+ *     `!important` here does break it, which is one more reason there are none in
+ *     this directory.)
+ *
+ *  2. `white-space: nowrap` on `.sort-column__label`. This was the bigger of the
+ *     two and the less obvious: the widest thing in a Chapters column is not a
+ *     cell value, it is its own heading. "QUESTION TYPE" on one line, plus the
+ *     10px gap and the 40px pair of sort chevrons beside it, set a 178px floor
+ *     that no amount of relaxing the cell padding could get under. Letting a
+ *     two-word heading wrap costs one line of header height once and takes the
+ *     table's minimum from 1015px to 827px, which fits the content column at a
+ *     laptop width with the sidebar open.
+ *
+ * Both are restored at 768px and below in responsive.css, where scrolling the
+ * list sideways is the deliberate behaviour and squeezing seven columns onto a
+ * phone would be the worse answer. `.sort-column__label` keeps Payload's
+ * `text-overflow: ellipsis`, which simply stops applying once the text is allowed
+ * to wrap.
+ * --------------------------------------------------------------------------- */
+
+.table th,
+.table td {
+  min-width: 0;
+}
+
+.table thead .sort-column__label {
+  white-space: normal;
+}
+
+/* Two smaller adjustments that fall out of the above. Once the cells are free to
+ * size to their content, the table's `min-width: 100%` still stretches it to fill
+ * the column, and auto layout hands the surplus out in proportion to how much each
+ * column *wants* -- which a Bengali chapter title wants without limit. Left alone
+ * it took 633px of a 1798px table while the five short columns sat just under
+ * their own heading widths, so two headings wrapped to a second line in a table
+ * that had 160px going spare.
+ *
+ * Capping the body cell pulls the title's demand back into the same order as
+ * everything else, so the short columns reach their heading width and the header
+ * row stays on one line. It is a preference, not a hard cap: `max-width` on a
+ * table cell is a hint to the auto-layout algorithm, so the title column measured
+ * 457px at 1798px wide rather than the 18rem asked for -- still the widest column
+ * by far, just no longer starving the others. Measured at a 988px content column
+ * it takes the header row from two lines to one AND the body from 613px to 591px,
+ * because the columns that gained width stopped wrapping their values too.
+ * Replaces Payload's own `max-width: 70vw`, which on a wide monitor is not a cap
+ * at all.
+ *
+ * The gap is Payload's own condensed value (`.sort-column--appearance-condensed`,
+ * a class it only applies elsewhere), halving the space between a heading and its
+ * pair of sort chevrons. Worth 5px per sortable column at the point where the
+ * heading is what sets the floor, and it reads as a tighter association between
+ * the label and the control that sorts by it. */
+.table tbody td {
+  max-width: 18rem;
+}
+
+.table thead .sort-column {
+  gap: calc(var(--base) / 4);
+}
+
+.table tbody tr:nth-child(odd) {
+  background: transparent;
+}
+
+.table tbody tr {
+  transition: background-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.table tbody tr:not(:last-child) td {
+  border-block-end: 1px solid var(--theme-elevation-100);
+}
+
+.table tbody tr:hover {
+  background: var(--bdw-brand-softer);
+}
+
+/* Row links fill the cell, so the whole row is the target rather than the few
+ * characters of the title. */
+.table tbody td a {
+  text-decoration: none;
+  color: var(--theme-text);
+  font-weight: var(--bdw-weight-medium);
+}
+
+.table tbody td a:hover {
+  color: var(--bdw-brand);
+}
+
+.list-controls {
+  margin-bottom: calc(var(--base) * 0.8);
+}
+
+.paginator button,
+.per-page button {
+  border-radius: var(--style-radius-s);
+}
+
+/* The empty list. A dashed frame on paper, not on canvas: --bdw-surface-raised is
+ * --theme-elevation-50, which surfaces.css's tinted canvas is now within a few RGB
+ * points of, so this used to be a dashed outline around nothing. */
+.no-results {
+  border: 1px dashed var(--bdw-border-strong);
+  border-radius: var(--style-radius-m);
+  background: var(--bdw-surface);
+  box-shadow: var(--bdw-shadow-xs);
+  padding: calc(var(--base) * 1.5);
+  text-align: center;
+}
+
+/* Status pills. `.status` is the draft/published indicator; `.pill` is the
+ * generic one used in relationship cells and version rows. Both get pill
+ * geometry and a tinted fill so a draft is identifiable at a glance across a
+ * long list. */
+.status,
+.pill {
+  border-radius: var(--bdw-radius-pill);
+  font-size: var(--bdw-text-xs);
+  font-weight: var(--bdw-weight-semibold);
+  letter-spacing: var(--bdw-tracking-normal);
+}
+
+/* The neutral pill, and the busiest one: the list toolbar's Columns / Filters / Sort
+ * toggles, every column chip in the Columns panel, the drawer's own Create New, and
+ * the plain chips in relationship cells.
+ *
+ * Payload fills it elevation-100 and gives it nothing else, and elevation-100 is both
+ * --bdw-canvas and --bdw-surface-sunken in this theme, so the chip has no shape at all
+ * on a page background or inside a sunken compartment. The hairline is what makes one
+ * fill work in all four places; the fill itself is left alone because the Columns
+ * panel's selected state (views.css) is a white pill with a brand ring, and it needs
+ * the unselected ones to stay grey to read as the odd one out. */
+.pill--style-light {
+  background: var(--theme-elevation-100);
+  color: var(--theme-elevation-700);
+  box-shadow: 0 0 0 1px var(--bdw-border);
+}
+
+.pill--style-success {
+  background: var(--bdw-positive-soft);
+  color: var(--bdw-positive);
+}
+
+.pill--style-warning {
+  background: var(--bdw-warning-soft);
+  color: var(--bdw-warning);
+}
+
+.pill--style-error {
+  background: var(--bdw-danger-soft);
+  color: var(--bdw-danger);
+}
+
+/* ---------------------------------------------------------------------------
+ * Cards (the collection cards Payload's own dashboard renders, plus card use
+ * inside drawers). The custom dashboard in components/payload/dashboard/ does
+ * not use these, but the folder and upload views do.
+ * --------------------------------------------------------------------------- */
+
+.card {
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-m);
+  background: var(--bdw-surface);
+  box-shadow: var(--bdw-shadow-xs);
+  transition:
+    border-color var(--bdw-fast) var(--bdw-ease),
+    box-shadow var(--bdw-fast) var(--bdw-ease),
+    transform var(--bdw-fast) var(--bdw-ease);
+}
+
+.card--has-onclick:hover {
+  border-color: var(--bdw-brand);
+  box-shadow: var(--bdw-shadow-md);
+  /* Sub-pixel lift. Anything larger reads as a game UI, and on a grid of eight
+   * cards a 4px hop shifts enough of the page to be distracting. */
+  transform: translateY(-1px);
+}
+
+.card__title {
+  font-weight: var(--bdw-weight-semibold);
+  letter-spacing: var(--bdw-tracking-snug);
+}
+
+/* Inline notices ("This document has unsaved changes", scheduled-publish hints).
+ * Payload's default is a flat grey block; tinting by type means an editor can
+ * tell a warning from an acknowledgement without reading it first. */
+.banner {
+  border-radius: var(--style-radius-m);
+  border: 1px solid var(--bdw-border);
+  padding: calc(var(--base) * 0.6) calc(var(--base) * 0.75);
+  line-height: var(--bdw-leading-normal);
+}
+
+.banner--type-success {
+  background: var(--bdw-positive-soft);
+  border-color: color-mix(in srgb, var(--bdw-positive) 35%, transparent);
+  color: var(--bdw-positive);
+}
+
+.banner--type-error {
+  background: var(--bdw-danger-soft);
+  border-color: color-mix(in srgb, var(--bdw-danger) 35%, transparent);
+  color: var(--bdw-danger);
+}
+
+/* ---------------------------------------------------------------------------
+ * Floating layers: drawers, Payload's own confirmation modal, toasts, popups
+ *
+ * The project's custom dialogs live in components/payload/modals/ and are styled
+ * by their own CSS module. What is below is Payload's built-in set — the
+ * relationship drawer, the leave-without-saving prompt, the delete prompt — so
+ * that our dialogs and theirs are recognisably the same component family. That
+ * consistency is the point: a panel where half the dialogs look bespoke and half
+ * look stock reads as unfinished, and Payload's cannot all be replaced.
+ * --------------------------------------------------------------------------- */
+
+/* The drawer scrim.
+ *
+ * It is `.drawer__blur-bg`, and specifically that element's two pseudo-elements.
+ * This block used to be a rule on `.overlay`, which is not the drawer scrim and is
+ * not anything else in the admin panel either: the only `.overlay` in Payload's
+ * compiled CSS belongs to react-datepicker's holiday tooltip, four selectors deep
+ * behind `.react-datepicker__day--holidays`. A `--theme-overlay` fill and a 3px blur
+ * were being aimed at a 4px-padded date-cell label that this project never renders.
+ * Third instance of the trap this directory keeps hitting - see the versions section
+ * of views.css and the file-panel section of fields.css for the other two - and the
+ * same lesson: the class was in the stylesheet, so it read as a live hook.
+ *
+ * What the real one needed is exactly what .confirmation-modal below needed, for the
+ * same reason. Payload splits it into `::before` for the tint and `::after` for the
+ * blur (kept: a translucent background and a backdrop-filter on one box composite in
+ * the wrong order and the blur lands on the tint), and the tint is `--theme-bg` at
+ * 0.75 - white, over a canvas that is not white, so the page brightened as the drawer
+ * came over it. The alpha is in `--theme-overlay` already, so Payload's companion
+ * `opacity` has to go with the white.
+ *
+ * Visible only in the gutter beside the drawer, because `.drawer__content` covers the
+ * rest - which is the whole reason it is worth getting right rather than leaving.
+ * That gutter is the only thing on screen saying the page is still behind the drawer;
+ * at 75% white it said the page had been replaced. No `-webkit-` companion on the
+ * blur: see the note on .app-header__bg. */
+.drawer__blur-bg:before {
+  background: var(--theme-overlay);
+  opacity: 1;
+}
+
+/* 4px, matching both dialogs, rather than Payload's 8px. Behind a drawer that leaves
+ * a 60px strip, an 8px blur turns that strip into an unreadable smear; 4px reads as
+ * out of focus, which is the message. */
+.drawer__blur-bg:after {
+  backdrop-filter: blur(4px);
+}
+
+.drawer__content {
+  border-start-start-radius: var(--style-radius-l);
+  border-start-end-radius: var(--style-radius-l);
+  box-shadow: var(--bdw-shadow-lg);
+  border: 1px solid var(--bdw-border);
+  border-block-end: 0;
+}
+
+.drawer__header {
+  border-block-end: 1px solid var(--bdw-border);
+}
+
+/* Payload's own confirmation modal: delete document, leave without saving, and
+ * restore-a-version too — see the versions section of views.css for why that last
+ * one is this component rather than one of its own.
+ *
+ * Payload dims the page itself, so this looked like it needed nothing. It dims it
+ * towards `--theme-bg` though, which is white: 75% white over a canvas that is not
+ * white, so the page BRIGHTENS as the dialog opens and the thing meant to recede is
+ * the thing that lights up. Same defect surfaces.css documents for the four
+ * gradient fade-masks. `--theme-overlay` is what the drawer scrim above and the
+ * project's own dialogs both fade to, and its alpha is already in the token, so
+ * Payload's companion `opacity: 0.75` has to go with the white or the scrim lands at
+ * 0.375. */
+.confirmation-modal:before {
+  background: var(--theme-overlay);
+  opacity: 1;
+}
+
+/* 4px rather than Payload's 8px, matching ConfirmDialog.module.css. The blur is a
+ * separate pseudo-element from the tint on purpose (Payload's arrangement, kept):
+ * backdrop-filter and a translucent background on the same box composite in the
+ * wrong order and the blur ends up applied to the tint.
+ *
+ * This is the rule that exposed the prefix trap documented on .app-header__bg — it
+ * was written with a `-webkit-` companion, emitted as an empty rule, and left
+ * Payload's 8px in place while appearing to override it. */
+.confirmation-modal:after {
+  backdrop-filter: blur(4px);
+}
+
+/* The panel. Geometry as well as fill, because the geometry is what gives away that
+ * two dialogs are two different components: Payload's is 720px wide with 40px of
+ * padding, the project's own is 460px with 22px, and a delete flow can show one
+ * straight after the other. Matched to `.card` in ConfirmDialog.module.css.
+ *
+ * The animation is there for the same reason. Payload configures @faceless-ui/modal
+ * with `transTime: 0`, so its dialogs have no entrance at all — they appear between
+ * two frames while ours rise and settle. Keyframes, not a transition, and for the
+ * same reason as in ConfirmDialog.module.css: the modal item is not in the DOM until
+ * it opens (verified — the container is empty before the click), so there is no
+ * painted initial state for a transition to run from, while an animation on a
+ * freshly mounted element plays from 0%. Reduced motion is handled centrally by the
+ * block at the end of tokens.css, which clamps --bdw-slow to 1ms. */
+.confirmation-modal__wrapper {
+  gap: calc(var(--base) * 0.9);
+  max-width: 460px;
+  padding: calc(var(--base) * 1.1);
+  background: var(--bdw-surface);
+  border-radius: var(--style-radius-l);
+  border: 1px solid var(--bdw-border);
+  box-shadow: var(--bdw-shadow-lg);
+  animation: bdwDialogIn var(--bdw-slow) var(--bdw-ease) both;
+}
+
+@keyframes bdwDialogIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.confirmation-modal__content {
+  color: var(--bdw-text-muted);
+  line-height: var(--bdw-leading-normal);
+}
+
+/* The dialog's title, which lives INSIDE __content and therefore inherited the
+ * muted colour above: a 28px/700 heading in the same grey as the fine print under
+ * it, which is the one thing on the panel that should not be quiet. 28px is
+ * Payload's page-level h1 arriving unchanged in a 460px box, so the size comes down
+ * to the project's own dialog title at the same time. Payload's
+ * `.confirmation-modal__content > *` already zeroes the margin. */
+.confirmation-modal__content h1 {
+  font-size: var(--bdw-text-xl);
+  font-weight: var(--bdw-weight-semibold);
+  line-height: var(--bdw-leading-snug);
+  letter-spacing: var(--bdw-tracking-snug);
+  color: var(--bdw-text);
+}
+
+.confirmation-modal__controls {
+  gap: calc(var(--base) * 0.5);
+}
+
+.popup__content {
+  border-radius: var(--style-radius-m);
+  border: 1px solid var(--bdw-border);
+  box-shadow: var(--bdw-shadow-md);
+  overflow: hidden;
+}
+
+.popup-button-list__button {
+  border-radius: var(--style-radius-s);
+  transition: background-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.popup-button-list__button:hover {
+  background: var(--bdw-brand-softer);
+  color: var(--bdw-brand);
+}
+
+.payload-toast-item {
+  border-radius: var(--style-radius-m);
+  border: 1px solid var(--bdw-border);
+  box-shadow: var(--bdw-shadow-md);
+  background: var(--bdw-surface);
+}
+
+.payload-toast-item.toast-success .toast-icon {
+  color: var(--bdw-positive);
+}
+
+.payload-toast-item.toast-error .toast-icon {
+  color: var(--bdw-danger);
+}
+
+.payload-toast-item.toast-warning .toast-icon {
+  color: var(--bdw-warning);
+}
+
+.tooltip-content {
+  border-radius: var(--style-radius-s);
+  box-shadow: var(--bdw-shadow-sm);
+  font-size: var(--bdw-text-sm);
+}
+
+/* ---------------------------------------------------------------------------
+ * Login and other unauthenticated screens
+ *
+ * .template-minimal is the shell for login, forgot-password, reset-password and
+ * create-first-user, and .template-minimal__wrap is the column inside it. Making
+ * that column a card is the whole change, and it covers all four screens at
+ * once: this is the first thing anyone sees, and it is the one place where the
+ * default Payload look is unmistakable.
+ *
+ * The card's fill is surfaces.css's, like every other paper region.
+ * --------------------------------------------------------------------------- */
+
+.template-minimal__wrap {
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-l);
+  box-shadow: var(--bdw-shadow-md);
+  padding: calc(var(--base) * 1.6);
+}
+
+.login__brand {
+  margin-bottom: calc(var(--base) * 1.4);
+}
+
+/* The forgot-password link. Payload leaves it a bare underlined anchor in
+ * full-strength text, sitting between the password field and the submit button, so it
+ * pulls as hard as the one action the screen actually has. Muted and un-underlined
+ * until it is wanted.
+ *
+ * Targeted as the form's own child because Payload gives this anchor no class, and it
+ * is the only anchor the login form contains. */
+.login__form > a {
+  /* Colour alone demotes it. No font-size change: this is a link someone reaches for
+   * when they are already stuck, and .login__form is a block, so it is a full-width
+   * target on a phone. Shrinking it would make the one useful escape route the
+   * smallest thing on the screen. */
+  color: var(--bdw-text-muted);
+  text-decoration: none;
+  border-radius: var(--style-radius-s);
+  transition: color var(--bdw-fast) var(--bdw-ease);
+}
+
+.login__form > a:hover,
+.login__form > a:focus-visible {
+  color: var(--bdw-brand);
+  /* Back on hover: for a link in a form, removing it permanently is a step too far. */
+  text-decoration: underline;
+}
+
+/* A login form has exactly one action, so the button spanning the field width
+ * is both the obvious target and the tidier shape. */
+.login__form .form-submit .btn,
+.create-first-user .form-submit .btn,
+.reset-password__wrap .form-submit .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Loading and skeleton states. Payload's shimmer is a grey sweep; retinting it
+ * to the brand keeps a slow list load feeling like part of the same product. */
+.shimmer-effect__shine {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--bdw-brand-softer) 50%,
+    transparent 100%
+  );
+}
+
+.progress-bar__progress {
+  background: var(--bdw-brand);
+}

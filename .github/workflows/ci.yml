@@ -1,0 +1,200 @@
+# Continuous integration (audit #19: "no automated tests or CI").
+#
+# WHAT THIS EXISTS TO CATCH. The suites written for the audit's findings are
+# only worth something if they run on every change, on a machine nobody has
+# configured by hand. Two things in particular cannot be checked any other way:
+#
+#   * THE PRODUCTION BUILD. Half of what the e2e suite asserts only exists in
+#     one — the prerendered HTML, the sitemap, the canonical tags, and the fact
+#     that a route which should have been statically generated actually was.
+#     `next dev` would happily pass a suite that a deploy then fails.
+#
+#   * A SEEDED DATABASE. This site is a build artefact: `next build` reads the
+#     catalogue through Payload's Local API and writes it into static HTML. A
+#     build against an empty database produces an empty site, and the e2e specs
+#     — deliberately data-driven, and written to skip when there is nothing to
+#     inspect — would then report a screen of green skips having asserted
+#     nothing at all.
+#
+# So the end-to-end job is migrate -> seed -> build -> serve -> test, in that
+# order. `npm run build` is deliberately NOT used for it: that script is
+# `payload migrate && next build`, which would build before the seed exists.
+# Spelling the three steps out is also what makes the ordering visible.
+#
+# Action versions are the majors that are known-good together; the
+# github-actions entry in .github/dependabot.yml is what moves them forward.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # So a red main can be re-run without an empty commit.
+  workflow_dispatch:
+
+# A second push to the same branch makes the first run's answer worthless.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only: nothing here comments, labels, publishes or deploys.
+permissions:
+  contents: read
+
+env:
+  # eslint 9 pulls eslint-visitor-keys, which requires ^20.19 || ^22.13 || >=24
+  # — so the 22.12 this project was developed on cannot even install the lint
+  # toolchain. `22.x` stays on the same major as local work while always taking
+  # the latest patch, which is where the security fixes are.
+  NODE_VERSION: "22.x"
+
+jobs:
+  # Everything that needs neither a database nor a browser, in its own job so a
+  # type error reports in about a minute instead of queueing behind a build.
+  checks:
+    name: typecheck, lint, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # `npm ci`, never `npm install`: it installs exactly the tree recorded in
+      # package-lock.json and FAILS when the lockfile and package.json disagree.
+      # That failure is the lockfile enforcement the audit asked for — without
+      # it, CI can silently test a different dependency tree than production.
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      # payload-types.ts and the admin import map are GENERATED files that are
+      # committed, so the typecheck above is only as honest as they are: a stale
+      # payload-types.ts lets code that reads a long-deleted field keep passing.
+      # Both generators read the config only — no connection is opened — so a
+      # syntactically valid URL pointing at nothing is all this needs.
+      #
+      # This comparison is also why .gitattributes exists: the project is
+      # developed on Windows, and without LF normalisation in the repository a
+      # file regenerated on Linux differs on every line.
+      - name: Generated files are current
+        env:
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
+          PAYLOAD_SECRET: no-server-is-started-by-a-code-generator
+        run: |
+          npm run generate:types
+          npm run generate:importmap
+          git diff --exit-code -- payload-types.ts 'app/(payload)/admin/importMap.js'
+
+  e2e:
+    name: build and end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      # The deployed database is Neon, which is Postgres 17, and the migrations
+      # in migrations/ were written against it — so CI runs the same major
+      # rather than whatever is newest.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: boidwip_ci
+        ports:
+          - 5432:5432
+        # Without a health check the first migration races the server's own
+        # startup and fails with ECONNREFUSED perhaps one run in five.
+        options: >-
+          --health-cmd "pg_isready -U postgres -d boidwip_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # 127.0.0.1 rather than localhost: on a runner that resolves localhost to
+      # ::1 first, the client dials a port nothing is listening on while
+      # Postgres sits happily on IPv4. playwright.config.ts dodges the same trap.
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/boidwip_ci
+      # Throwaway per run: it signs admin sessions for a database that is
+      # destroyed when the job ends. A real secret must never appear here.
+      PAYLOAD_SECRET: ci-only-value-not-a-production-secret
+      # Set at the JOB level on purpose, so the build and the test run read the
+      # SAME value. NEXT_PUBLIC_SITE_URL is baked into canonicals, JSON-LD and
+      # the sitemap at build time, and tests/e2e/seo.spec.ts asserts the origin
+      # it finds there; a mismatch between the two steps would fail every SEO
+      # spec for a reason that has nothing to do with the code.
+      #
+      # AND IT IS DELIBERATELY UNROUTABLE (.test is reserved by RFC 6761). The
+      # sitemap advertises absolute production URLs; seo.spec.ts asserts that
+      # origin, drops it, and requests only the path from the server under test.
+      # If that ever regressed, this turns it into a DNS failure instead of CI
+      # hammering the live site on every push.
+      NEXT_PUBLIC_SITE_URL: https://ci.boidwip.test
+      # Redundant while E2E_BASE_URL is unset (writes already default to allowed
+      # against a local build) and stated anyway: it is the flag that means
+      # "this database is disposable", so the review-submission spec keeps
+      # running if someone later points this job at a deployed URL.
+      E2E_ALLOW_WRITES: "1"
+      # R2 and Turnstile are intentionally unconfigured. payload.config.ts then
+      # stores uploads on local disk, and the review form runs unprotected —
+      # both correct for a runner that is deleted in half an hour, and the
+      # second is what lets the "submit forces pending" spec actually POST.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Apply migrations
+        run: npx payload migrate
+
+      # Idempotent, and the fixture for the whole suite: three public-domain
+      # authors, six books, chapters under two of them — which is what makes the
+      # cross-book chapter-lookup spec (#5) possible at all — and the about,
+      # contact and privacy-policy pages the trust-page spec requires.
+      - name: Seed the catalogue
+        run: npm run seed
+
+      - name: Build
+        run: npx next build
+
+      # Both Playwright projects are Chromium (Desktop Chrome and Pixel 7), so
+      # one browser download covers the suite. --with-deps adds the system
+      # libraries the runner image does not ship.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # playwright.config.ts starts `next start` itself and waits on the port,
+      # so there is no server step here and no sleep to get wrong.
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      # The HTML reporter is only configured under CI, and a trace is captured
+      # on the first retry — which is exactly the run whose artefact is worth
+      # keeping. `!cancelled()` rather than `failure()`: a report from a green
+      # run is how you check what was skipped, and skips are load-bearing here.
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

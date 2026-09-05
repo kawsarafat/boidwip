@@ -1,0 +1,59 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+# Payload reads plain `.env` by default (not just `.env.local`), and that
+# file holds real secrets: DATABASE_URL with the Neon password in it,
+# PAYLOAD_SECRET, and the R2 access keys. `.env*.local` alone would NOT
+# have matched a bare `.env`, so every one of those would have been
+# committed. `.env.example` is force-included below because it is the
+# documentation of which vars are needed and holds no real values.
+.env
+.env.*
+!.env.example
+
+# Payload
+# Note: payload-types.ts is deliberately COMMITTED, not ignored. Vercel
+# builds from a fresh clone, so an ignored types file would break the
+# production build on a missing import. Regenerate it with
+# `npm run generate:types` after any collection change and commit the diff.
+.payload/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Claude Code
+# launch.json IS committed: it is the shared "how to start the dev server"
+# config and every clone wants the same one. settings.local.json is not —
+# it holds per-machine permission grants with absolute paths off this
+# developer's disk, which are meaningless (and noisy) in anyone else's
+# clone. Listed here rather than relying on a global ignore, so the rule
+# travels with the repository.
+/.claude/settings.local.json
+
+# Playwright
+# Both directories are DEFAULTS the runner writes without being told to, so
+# neither appears in playwright.config.ts and it is easy to miss that they
+# exist: `test-results/` is the per-test output dir (traces, screenshots and
+# .last-run.json), and `playwright-report/` is where the html reporter lands,
+# which only happens under CI. Untracked either way, and a failed run fills
+# them with megabytes of trace zips.
+/test-results/
+/playwright-report/

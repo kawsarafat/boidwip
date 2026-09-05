@@ -1,0 +1,510 @@
+/* The /admin index's own styles.
+ *
+ * A CSS MODULE, not a seventh file in app/(payload)/theme/. Everything in that
+ * folder overrides classes Payload ships, and the argument for keeping it
+ * unlayered and global is that it has to reach `.nav__link` and `.field-type`
+ * from a stylesheet it does not own. This view owns every element it renders, so
+ * scoped class names are simply the correct tool: nothing here can collide with
+ * a Payload class, and deleting this folder deletes its CSS with it.
+ *
+ * TOKENS ONLY, no literal colours. `--bdw-*` resolve through Payload's own
+ * `--theme-elevation-*` ramp (tokens.css), so this page inverts with the dark
+ * theme without a single dark-mode rule below. The two exceptions are the same
+ * ones the theme files make: `--style-radius-*`, which are Payload's variables
+ * that tokens.css re-points, and hairline widths.
+ *
+ * TONE IS AN ATTRIBUTE, not a class per colour. Each metric carries `data-tone`
+ * from queries.ts, so the mapping from "this is a problem now" to "red" lives in
+ * one place here rather than in the branch of a component deciding which class
+ * name to pass. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bdw-space-8);
+  padding-block: var(--bdw-space-8) var(--bdw-space-12);
+}
+
+/* ─────────────────────────── Greeting ─────────────────────────── */
+
+/* Baseline-aligned rather than centred: the buttons should sit on the same line
+ * as the date under the heading, which is what makes the row read as one block
+ * instead of a title with something floating beside it. */
+.greeting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--bdw-space-4);
+}
+
+.greetingText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bdw-space-1);
+  min-width: 0;
+}
+
+.greetingTitle {
+  margin: 0;
+  font-size: var(--bdw-text-3xl);
+  font-weight: var(--bdw-weight-semibold);
+  letter-spacing: var(--bdw-tracking-tight);
+  line-height: var(--bdw-leading-tight);
+  color: var(--bdw-text);
+}
+
+.greetingMeta {
+  margin: 0;
+  font-size: var(--bdw-text-sm);
+  color: var(--bdw-text-soft);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bdw-space-2);
+}
+
+/* Links styled as buttons, not Payload's `Button` component: these are
+ * navigations, and a real anchor keeps middle-click, ctrl-click and "copy link"
+ * working. Payload's Button renders an anchor too, but only through a client
+ * component, which would be the one thing on this page shipped to the browser. */
+.action {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--bdw-space-4);
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: var(--style-radius-m);
+  font-size: var(--bdw-text-sm);
+  font-weight: var(--bdw-weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--bdw-fast) var(--bdw-ease), border-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.action[data-variant="primary"] {
+  background: var(--bdw-brand);
+  color: var(--bdw-on-brand);
+}
+
+.action[data-variant="primary"]:hover {
+  background: var(--bdw-brand-strong);
+}
+
+.action[data-variant="secondary"] {
+  background: var(--bdw-surface);
+  border-color: var(--bdw-border-strong);
+  color: var(--bdw-text);
+}
+
+.action[data-variant="secondary"]:hover {
+  background: var(--bdw-surface-sunken);
+}
+
+.action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+/* ─────────────────────────── Sections ─────────────────────────── */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bdw-space-4);
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--bdw-space-1) var(--bdw-space-4);
+}
+
+/* Small caps, not a heading-sized heading. Three of these stack down the page,
+ * and at 22px each they would compete with the greeting for the eye; a label
+ * that reads as a divider is what lets the numbers underneath be the loudest
+ * thing in their band. */
+.sectionTitle {
+  margin: 0;
+  font-size: var(--bdw-text-2xs);
+  font-weight: var(--bdw-weight-semibold);
+  letter-spacing: var(--bdw-tracking-caps);
+  text-transform: uppercase;
+  color: var(--bdw-text-soft);
+}
+
+.sectionHint {
+  margin: 0;
+  font-size: var(--bdw-text-sm);
+  color: var(--bdw-text-muted);
+}
+
+/* ─────────────────────────── Stat cards ─────────────────────────── */
+
+/* auto-fit with a 200px floor, so four cards sit in one row on a laptop, two by
+ * two on a tablet and one per row on a phone with no media query deciding it. */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--bdw-space-4);
+}
+
+.statCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--bdw-space-1);
+  overflow: hidden;
+  padding: var(--bdw-space-5);
+  background: var(--bdw-surface);
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-l);
+  box-shadow: var(--bdw-shadow-xs);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color var(--bdw-fast) var(--bdw-ease),
+    box-shadow var(--bdw-fast) var(--bdw-ease),
+    transform var(--bdw-fast) var(--bdw-ease);
+}
+
+/* The tone lives in a 3px bar along the top edge rather than in the border or
+ * the figure's colour: a coloured number reads as a warning even when it is just
+ * "how many books there are", and a coloured border on a white card reads as a
+ * validation error. */
+.statCard::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 3px;
+  background: var(--bdw-border-strong);
+}
+
+.statCard[data-tone="brand"]::before {
+  background: var(--bdw-brand);
+}
+
+.statCard[data-tone="positive"]::before {
+  background: var(--bdw-positive);
+}
+
+.statCard[data-tone="warning"]::before {
+  background: var(--bdw-warning);
+}
+
+.statCard[data-tone="danger"]::before {
+  background: var(--bdw-danger);
+}
+
+.statCard:hover {
+  border-color: var(--bdw-border-strong);
+  box-shadow: var(--bdw-shadow-md);
+  transform: translateY(-1px);
+}
+
+.statCard:focus-visible {
+  outline: none;
+  border-color: var(--bdw-brand);
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+/* tabular-nums so 1,204 and 1,199 are the same width: without it the figures in
+ * a row of cards sit at visibly different widths and the row looks unaligned. */
+.statFigure {
+  font-size: var(--bdw-text-3xl);
+  font-weight: var(--bdw-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--bdw-tracking-tight);
+  line-height: var(--bdw-leading-tight);
+  color: var(--bdw-text);
+}
+
+.statLabel {
+  font-size: var(--bdw-text-sm);
+  font-weight: var(--bdw-weight-medium);
+  color: var(--bdw-text);
+}
+
+.statHint {
+  font-size: var(--bdw-text-xs);
+  line-height: var(--bdw-leading-normal);
+  color: var(--bdw-text-muted);
+}
+
+/* ─────────────────────────── Needs attention ─────────────────────────── */
+
+/* One card holding rows, not seven cards: these are a list to be read top to
+ * bottom in priority order, and seven separate cards with seven shadows would
+ * present them as seven unrelated things. */
+.panel {
+  overflow: hidden;
+  background: var(--bdw-surface);
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-l);
+  box-shadow: var(--bdw-shadow-xs);
+}
+
+.attentionList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A separator between rows only, never above the first or below the last, where
+ * it would double the card's own border. */
+.attentionRow + .attentionRow {
+  border-top: 1px solid var(--bdw-border);
+}
+
+.attentionLink {
+  display: flex;
+  align-items: center;
+  gap: var(--bdw-space-4);
+  padding: var(--bdw-space-4) var(--bdw-space-5);
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--bdw-fast) var(--bdw-ease);
+}
+
+.attentionLink:hover {
+  background: var(--bdw-surface-sunken);
+}
+
+/* An INSET ring, unlike every other focus ring in the panel. The rows run
+ * edge to edge inside a card with `overflow: hidden`, so an outer 3px ring would
+ * be clipped along the card's border and the focused row would appear to have a
+ * ring on two sides only. */
+.attentionLink:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--bdw-brand);
+}
+
+/* A square-ish badge rather than a bare numeral: the count is the row's own
+ * status light, and giving it a fixed 36px box keeps every label on the same
+ * left edge whether the number is 0 or 1,204. */
+.attentionCount {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding-inline: var(--bdw-space-1);
+  border-radius: var(--style-radius-m);
+  background: var(--bdw-surface-sunken);
+  color: var(--bdw-text-soft);
+  font-size: var(--bdw-text-md);
+  font-weight: var(--bdw-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.attentionLink[data-tone="danger"] .attentionCount {
+  background: var(--bdw-danger-soft);
+  color: var(--bdw-danger-strong);
+}
+
+.attentionLink[data-tone="warning"] .attentionCount {
+  background: var(--bdw-warning-soft);
+  color: var(--bdw-warning);
+}
+
+.attentionLink[data-tone="brand"] .attentionCount {
+  background: var(--bdw-brand-soft);
+  color: var(--bdw-brand-strong);
+}
+
+/* Zero wins over tone, deliberately last so it overrides the four rules above:
+ * a satisfied check is green whatever colour its unsatisfied state would have
+ * been, which is what makes a column of ticks scannable. */
+.attentionLink[data-clear="true"] .attentionCount {
+  background: var(--bdw-positive-soft);
+  color: var(--bdw-positive);
+  font-size: var(--bdw-text-sm);
+}
+
+.attentionText {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.attentionLabel {
+  font-size: var(--bdw-text-sm);
+  font-weight: var(--bdw-weight-medium);
+  color: var(--bdw-text);
+}
+
+/* A cleared row steps back: same size and same position, lighter weight and
+ * quieter colour. It stays legible and stops pulling the eye. */
+.attentionLink[data-clear="true"] .attentionLabel {
+  font-weight: var(--bdw-weight-normal);
+  color: var(--bdw-text-soft);
+}
+
+.attentionHint {
+  font-size: var(--bdw-text-xs);
+  line-height: var(--bdw-leading-normal);
+  color: var(--bdw-text-muted);
+}
+
+/* Hidden until the row is hovered or focused, then it slides in. The row is
+ * already obviously a link from its hover fill; the arrow's job is to say which
+ * row the keyboard is on, and forty static arrows down a page are just noise. */
+.attentionChevron {
+  flex: 0 0 auto;
+  color: var(--bdw-text-muted);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity var(--bdw-fast) var(--bdw-ease), transform var(--bdw-fast) var(--bdw-ease);
+}
+
+.attentionLink:hover .attentionChevron,
+.attentionLink:focus-visible .attentionChevron {
+  opacity: 1;
+  transform: none;
+}
+
+.attentionEmpty {
+  margin: 0;
+  padding: var(--bdw-space-5);
+  font-size: var(--bdw-text-sm);
+  line-height: var(--bdw-leading-relaxed);
+  color: var(--bdw-text-muted);
+}
+
+/* ─────────────────────────── Everything else ─────────────────────────── */
+
+/* auto-FILL, not auto-fit, unlike the stat grid: with seven nav groups the last
+ * row is usually short, and auto-fit would stretch two remaining cards across
+ * the full width so the grid's columns stopped lining up between rows. */
+.entityGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--bdw-space-4);
+}
+
+.entityCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bdw-space-2);
+  padding: var(--bdw-space-4) var(--bdw-space-5) var(--bdw-space-5);
+  background: var(--bdw-surface);
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-l);
+}
+
+.entityGroup {
+  margin: 0;
+  font-size: var(--bdw-text-2xs);
+  font-weight: var(--bdw-weight-semibold);
+  letter-spacing: var(--bdw-tracking-caps);
+  text-transform: uppercase;
+  color: var(--bdw-text-muted);
+}
+
+.entityList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Negative inline margin equal to the padding, so the hover fill reaches the
+ * card's inner edge while the text stays on the same left line as the group
+ * heading above it. */
+.entityLink {
+  display: block;
+  margin-inline: calc(var(--bdw-space-2) * -1);
+  padding: var(--bdw-space-2);
+  border-radius: var(--style-radius-s);
+  font-size: var(--bdw-text-sm);
+  color: var(--bdw-text);
+  text-decoration: none;
+  transition: background var(--bdw-fast) var(--bdw-ease), color var(--bdw-fast) var(--bdw-ease);
+}
+
+.entityLink:hover {
+  background: var(--bdw-surface-sunken);
+  color: var(--bdw-brand-strong);
+}
+
+.entityLink:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+/* ─────────────────────────── Utilities ─────────────────────────── */
+
+/* Local rather than borrowed from Payload's `.sr-only`: that class is inside
+ * `@layer payload-default`, so it exists at the mercy of a version bump, and a
+ * screen-reader-only string silently becoming visible is a bug nobody sees. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ─────────────────────────── Narrow screens ─────────────────────────── */
+
+@media (max-width: 640px) {
+  .page {
+    gap: var(--bdw-space-6);
+    padding-block: var(--bdw-space-6) var(--bdw-space-10);
+  }
+
+  /* Stacked, and the buttons go full width: a right-aligned pair of pills under
+   * a wrapped heading reads as debris, and at this width there is no second
+   * column for them to be aligned against. */
+  .greeting {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .greetingTitle {
+    font-size: var(--bdw-text-2xl);
+  }
+
+  .action {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .attentionLink {
+    padding-inline: var(--bdw-space-4);
+  }
+}
+
+/* The transform on a stat card and the sliding chevron are decoration; the
+ * hover fill and the focus ring are information, so those stay. */
+@media (prefers-reduced-motion: reduce) {
+  .action,
+  .attentionChevron,
+  .attentionLink,
+  .entityLink,
+  .statCard {
+    transition: none;
+  }
+
+  .statCard:hover {
+    transform: none;
+  }
+
+  .attentionChevron {
+    transform: none;
+  }
+}

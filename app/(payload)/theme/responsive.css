@@ -1,0 +1,399 @@
+/* Boidwip admin — responsive refinements.
+ *
+ * Payload's admin panel is already responsive: it has a mobile nav, a hamburger,
+ * a gutter that shrinks at each breakpoint, and 161 media-query rules across the
+ * two stylesheets. This file does not re-implement any of that. It fixes the
+ * things that a desktop-first theme leaves behind on a phone, plus one genuine
+ * mobile bug in the defaults.
+ *
+ * Breakpoints match Payload's own ($breakpoint-*-width in
+ * node_modules/@payloadcms/ui/dist/scss/vars.scss): 400 / 768 / 1024 / 1440.
+ * Using different ones would mean two layout systems changing at different
+ * widths, which is how a panel ends up with a stray desktop-sized element in a
+ * mobile row. They are written as literals because CSS custom properties are not
+ * allowed in a media query condition — Payload publishes
+ * --breakpoint-s-width for JS, not for this.
+ *
+ * NOTE ON ORDER: this file must be imported last. Its rules are unlayered, like
+ * the rest of the directory, so within the unlayered set the normal cascade
+ * applies and a media-query rule does not automatically beat a plain one at the
+ * same specificity. See app/(payload)/layout.tsx. */
+
+/* ---------------------------------------------------------------------------
+ * Tablet and below
+ * --------------------------------------------------------------------------- */
+
+@media (max-width: 1024px) {
+  /* The tablet step of the type baseline tokens.css raises to 14px.
+   *
+   * It has to be here rather than beside the 14px, and this is the one thing to
+   * understand about overriding a Payload variable that has breakpoints: Payload
+   * declares `html { font-size: 12px }` inside a media query in
+   * @layer payload-default, and unlayered CSS beats layered CSS at every
+   * specificity. So the flat 14px in tokens.css already beats Payload's 12px,
+   * and if this block did not exist the panel would render at 14px on a phone
+   * too. Same trap as --gutter-h, described in tokens.css.
+   *
+   * 13px, not Payload's 12px: the whole point of the change is that 12–13px body
+   * text in a tool used for hours is too small, and a phone is where that is
+   * least forgiving. --base-body-size moves with it so --base stays 20px and no
+   * gutter, toolbar height or gap shifts at the breakpoint. */
+  html {
+    font-size: 13px;
+  }
+
+  :root {
+    --base-body-size: 13;
+  }
+
+  /* Nav rows are the tap targets that matter, because the mobile nav is the only
+   * way to change collection. */
+  .nav__link {
+    min-height: calc(var(--base) * 1.8);
+    align-items: center;
+  }
+
+  /* .doc-tab, not `.doc-tab a`: the tab element is itself the anchor (or, when it is
+   * the current one, a div). See the tab block in chrome.css. */
+  .doc-tab {
+    min-height: calc(var(--base) * 1.8);
+  }
+
+  /* Payload stacks the document editor's sidebar under the form at this width. The
+   * canvas fill views.css gives it is what makes it read as a rail beside the paper
+   * column; stacked, it would be a block of page colour across the bottom of the
+   * sheet. Same reset views.css applies for --force-sidebar-wrap, for the same
+   * reason - here it is a width rather than a class that stacks it.
+   *
+   * A `border-block-start` used to stand in for the seam. It is gone because the
+   * paper is a card now (surfaces.css): it has its own bottom edge, inset by the
+   * gutter, and a full-width rule directly beneath it only crossed the canvas at
+   * both ends of that edge. A gap does the same job and cannot be misaligned. */
+  .document-fields__sidebar-wrap {
+    background-color: transparent;
+    margin-block-start: calc(var(--base) * 0.8);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Phones
+ * --------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  /* THE ONE ACTUAL BUG.
+   *
+   * Payload sizes form inputs at `font-size: 1rem`, and the root is 13px at this
+   * breakpoint (see the block above; Payload's own figure was 12px). So every
+   * input in the admin panel renders its text at 13px on a phone. Mobile Safari
+   * zooms the viewport in whenever a focused input's font-size is under 16px, and
+   * it does not zoom back out on blur — so tapping the chapter title field
+   * scrolls and scales the whole page, and the editor has to pinch out again
+   * before they can see the form. Chrome on Android behaves the same way with a
+   * user-scalable viewport.
+   *
+   * 16px on the control only. Not on html, which would rescale the entire
+   * panel's spacing since --base is derived from rem.
+   *
+   * This is the same selector list as fields.css, for the same reason: Payload
+   * applies its input styles per field type rather than to `input`. */
+  .field-type.text:not(.has-many) input,
+  .field-type.number:not(.has-many) input,
+  .field-type.email input,
+  .field-type.password input,
+  .field-type.confirm-password input,
+  .auth-fields .field-type.api-key input,
+  .field-type.textarea textarea,
+  .date-time-picker .react-datepicker__input-container input,
+  .point input,
+  .search-filter__input,
+  .item-search__input,
+  .block-search__input,
+  .react-select .rs__input,
+  .editor-container {
+    font-size: 16px;
+  }
+
+  /* Nav rows sized for a thumb rather than a cursor. 44px is the figure both
+   * Apple's and Google's guidelines land on. */
+  .nav__link {
+    min-height: 44px;
+    padding-inline: calc(var(--base) * 0.6);
+  }
+
+  .nav-group__toggle {
+    min-height: 36px;
+  }
+
+  /* The mobile close button, moved to the drawer's trailing edge so it stops
+   * landing on the brand block.
+   *
+   * `.nav__header` is `position: absolute; top: 0; width: 100vw`, and this is the
+   * element filling it. Payload turns the button inside it from `display: none` to
+   * `display: flex` at exactly this breakpoint - and at exactly this breakpoint
+   * also sets `--nav-width: 100vw`, so the drawer and that box are the same width.
+   * The button has `padding: 16px 0` and nothing positioning it, so it sits at the
+   * inline start: directly on top of the NavBrand tile and wordmark, which occupy
+   * the same strip. Pushing it to the far end puts the two side by side, brand at
+   * the leading edge and close at the trailing one, which is where a thumb looks
+   * for a dismiss control anyway.
+   *
+   * 768 and not 1024, because above it the button is hidden and the nav is 275px
+   * while this box is still 100vw - `flex-end` there would park the button off the
+   * sidebar entirely, harmless only for as long as it stays hidden.
+   *
+   * --nav-padding-inline-end is READ here, never set: Payload declares it three
+   * times across its breakpoints, and one flat unlayered value would beat all
+   * three. Reading it keeps the button's inset equal to the nav's own padding. */
+  .nav__header-content {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-inline-end: var(--nav-padding-inline-end);
+    /* Above the brand block, which is `z-index: 2`. Both are positioned children of
+     * the sidebar, so without this the brand wins on paint order and swallows the
+     * button's hit test - verified by elementFromPoint at the button's own centre,
+     * which returned the brand. The button looks completely normal while doing
+     * nothing, on the one control a phone user needs to get out of the drawer.
+     *
+     * Safe only because `.nav__header` is `pointer-events: none` (chrome.css) with
+     * `auto` restored on the button alone: the box is 100vw and covers the whole
+     * strip, so painting it above the brand without that would move the bug rather
+     * than fix it. */
+    z-index: 3;
+  }
+
+  /* The breadcrumb trail, and the reason the whole panel could be panned sideways
+   * on a phone. Payload gives .step-nav a sticky ::after fade mask, which only makes
+   * sense over a strip that scrolls -- but nothing in the chain actually scrolls or
+   * clips: the wrapper is `overflow: visible` with `min-width: auto`, so a trail
+   * longer than the header (any Bengali chapter title) pushed past the right edge,
+   * carried the account avatar with it, and gave the document a 27px horizontal
+   * scroll on every view. The fade was painting over content that was never masked.
+   *
+   * This is the scroll container that fade was written for. min-width: 0 is the part
+   * that does the work; a flex item will not shrink below min-content without it, so
+   * overflow-x alone would have changed nothing. Payload already hides the webkit
+   * scrollbar on this element, and scrollbar-width covers the rest. */
+  .app-header__step-nav-wrapper {
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* If you measure the document after that and still find it a scrollbar's width
+   * too wide, that is Payload's `:root { --nav-width: 100vw }` and it is not a bug
+   * to chase here. `vw` includes the classic scrollbar, so the nav drawer is exactly
+   * `innerWidth` while the content area is `clientWidth`; on a phone, where
+   * scrollbars are overlays, the two are equal and there is no overflow at all.
+   * Overriding it to 100% looks obvious and is not safe: the same variable is the
+   * first track of .template-default's `grid-template-columns: var(--nav-width) auto`,
+   * which Payload collapses to 0 when the drawer is closed. */
+
+  /* The document toolbar. Payload keeps Save, Publish, the preview link and the
+   * kebab menu on one row; below about 420px that row either overflows or
+   * squeezes the labels to nothing. Allowing it to wrap and letting the primary
+   * actions share the width keeps them reachable. */
+  .doc-controls__content {
+    flex-wrap: wrap;
+    row-gap: calc(var(--base) * 0.4);
+  }
+
+  /* Status / Last Modified / Created. The wrap above is on the row that holds this
+   * list, so it wraps the list as one 400px-wide item and nothing improves; the list
+   * needs its own. Payload's answer at this width is `overflow: auto` on the row plus
+   * a hidden scrollbar, which leaves Created permanently half-cut at the right edge
+   * with no visible affordance to say it can be scrolled to. Three short label/value
+   * pairs would rather stack. */
+  .doc-controls__meta {
+    flex-wrap: wrap;
+    row-gap: calc(var(--base) * 0.3);
+  }
+
+  .doc-controls__controls {
+    flex-wrap: wrap;
+  }
+
+  .doc-controls__controls .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    margin-block: 0;
+  }
+
+  /* Lists scroll sideways rather than reflowing. A card-per-row layout was the
+   * alternative and was rejected: the Chapters list is scanned by subject,
+   * question type and status together, and stacking those into a card loses the
+   * column alignment that makes the comparison possible. Momentum scrolling and
+   * a visible edge make the horizontal scroll discoverable instead. */
+  .table {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .table th,
+  .table td {
+    padding: calc(var(--base) * 0.5);
+  }
+
+  /* The two floors chrome.css removes so the Chapters list fits a desktop content
+   * column with the sidebar docked open. On a phone they are wanted back: with the
+   * table free to shrink to its content, six data columns squeeze into slivers and
+   * a Bengali chapter title wraps to five lines, which is a worse read than the
+   * sideways scroll above.
+   *
+   * The floor has to be lifted back off the checkbox column, which is why the
+   * second rule exists. Payload does that with
+   * `.collection-list .table table #heading-_select, … .cell-_select { min-width: unset }`
+   * -- more specific than this, but layered, so an unlayered blanket floor beats it
+   * and the 20px checkbox column measured 150px wide until this was added. Note the
+   * asymmetry it copies: a body cell carries `.cell-_select`, while the header cell
+   * carries no class at all and is identified by `id="heading-_select"`. Guarding
+   * only the class (the obvious `:not(.cell-_select)`) leaves the HEADER inflated,
+   * which is enough to hold the whole column open. */
+  .table th,
+  .table td {
+    min-width: 150px;
+  }
+
+  .table thead #heading-_select,
+  .table thead #heading-_dragHandle,
+  .table td.cell-_select,
+  .table td.cell-_dragHandle {
+    min-width: 0;
+  }
+
+  .table thead .sort-column__label {
+    white-space: nowrap;
+  }
+
+  /* Dialogs. Payload's confirmation modal carries 40px of padding and a 720px
+   * max-width, which on a 375px screen leaves a narrow column of text between
+   * two thick margins. The project's own dialogs in components/payload/modals/
+   * handle this themselves; this is for Payload's built-in delete and
+   * leave-without-saving prompts. */
+  .confirmation-modal__wrapper {
+    padding: calc(var(--base) * 1);
+    margin-inline: calc(var(--base) * 0.6);
+    max-width: none;
+    width: auto;
+  }
+
+  .confirmation-modal__controls {
+    flex-wrap: wrap;
+  }
+
+  .confirmation-modal__controls .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  /* The restore-a-version dialog needs nothing of its own: it IS this component in
+   * Payload 3.88, not a lookalike with its own class names. See the versions section
+   * of views.css, where three rules written against `.restore-version__*` turned out
+   * to match nothing in the rendered DOM. */
+
+  /* The API view's results card. Payload stacks the configuration column above it at
+   * this width and the JSON keeps its own indentation, so the card is the horizontal
+   * scroll container for a tree that is wider than a phone. It already has
+   * `overflow: auto`; this is the momentum scrolling that makes that discoverable,
+   * the same treatment .table gets above. */
+  .query-inspector__results {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  /* Editor toolbar buttons are 30px squares, which is under the tap-target
+   * minimum and sits in a wrapping row of fifteen of them. */
+  .toolbar-popup__button {
+    height: 38px;
+    width: 38px;
+  }
+
+  .template-minimal__wrap {
+    padding: calc(var(--base) * 1);
+  }
+
+  /* The editor's paper card (surfaces.css) gives itself a 24px inner inset so the
+   * field labels are not flush against its edge. On a phone that inset is paid for
+   * twice: Payload drops `--gutter-h` to 16px here, and the card's margin reads
+   * from it, so the first label started 40px in on a 375px screen and the fields
+   * lost a fifth of their width. Halving the card's own inset keeps the edge it was
+   * added for and gives the width back -- the canvas strip either side is doing most
+   * of the separating work at this width anyway.
+   *
+   * The PROPERTY, not `padding-inline`. Four other rules in surfaces.css cancel
+   * this inset with a negative margin so tabs and top-level groups can bleed to
+   * the card's edge; overriding the padding alone here would leave those reaching
+   * for the desktop figure and hang the tab strip 12px outside the card on the one
+   * screen size with no room to spare. */
+  .document-fields__edit {
+    --bdw-sheet-inset: calc(var(--base) * 0.6);
+  }
+
+  /* Field help text is bounded to 68ch on desktop so it does not read as body
+   * copy. On a phone the viewport is already narrower than that, and the extra
+   * constraint only risks a ragged column. */
+  .field-description {
+    max-width: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Small phones
+ *
+ * 400px is Payload's own extra-small breakpoint. Below it the login card's
+ * margins and the table's cell padding are the two things that run out of room
+ * first.
+ * --------------------------------------------------------------------------- */
+
+@media (max-width: 400px) {
+  .template-minimal__wrap {
+    padding: calc(var(--base) * 0.75);
+    border-radius: var(--style-radius-m);
+  }
+
+  .table th,
+  .table td {
+    padding: calc(var(--base) * 0.4);
+  }
+
+  /* At this width the uppercase tracked headers wrap mid-word. Dropping the
+   * tracking buys back roughly a character per column. */
+  .table thead th {
+    letter-spacing: 0;
+    font-size: var(--bdw-text-2xs);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Pointer-based refinements
+ *
+ * Hover styles are written unconditionally elsewhere in this directory, which is
+ * correct for a mouse and wrong for a touchscreen: a tap counts as a hover and
+ * the state sticks until the next tap somewhere else, so a row an editor touched
+ * stays highlighted and looks selected. Removing it for coarse pointers only,
+ * rather than dropping hover styling everywhere, keeps the desktop panel
+ * responsive to the mouse.
+ * --------------------------------------------------------------------------- */
+
+@media (hover: none) {
+  .table tbody tr:hover {
+    background: transparent;
+  }
+
+  .card--has-onclick:hover {
+    transform: none;
+    box-shadow: var(--bdw-shadow-xs);
+    border-color: var(--bdw-border);
+  }
+
+  /* `.thumbnail-card--has-on-click:hover` was here, for the same reason, and went with
+   * the rules it was mirroring: nothing in this project renders a thumbnail card. The
+   * end of the uploads section in fields.css has the account of where it does come
+   * from and what to write if a blocks field ever arrives. */
+
+  .file-field__upload:hover {
+    border-color: var(--bdw-border-strong);
+    background: var(--bdw-surface-raised);
+  }
+}

@@ -1,0 +1,55 @@
+/* The account monogram in the app header. Read the top-bar section of
+ * app/(payload)/theme/chrome.css alongside this file: the hover and focus states
+ * belong to `.app-header__account`, the anchor Payload wraps this in, which a CSS
+ * module cannot select. They reach in through --bdw-avatar-bg below.
+ *
+ * Colours are --bdw-* only. A hex here would be one theme's value applied to both,
+ * and it would look right in whichever theme it was written in. */
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 28px, against Payload's 25px gravatar. The header row is --app-header-height
+   * (56px, 48px at the mid breakpoint), so this has room, and at 25px a Bengali
+   * cluster with a matra above it and a below-base mark under it starts to crowd
+   * the disc. Fixed px rather than an em of --base: this is one glyph in a circle,
+   * and a circle that changes size at a breakpoint gains nothing. */
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+
+  /* Solid brand with white text works in both themes untouched: tokens.css keeps
+   * --bdw-brand and --bdw-on-brand at one value each precisely because that pairing
+   * reads on either canvas. Hence no [data-theme] selector in this file.
+   *
+   * The fallback is the real default; chrome.css supplies the variable so the
+   * anchor's :hover can change it. Written with a fallback rather than relying on
+   * that file so the disc is never unfilled if the two get out of step. */
+  background: var(--bdw-avatar-bg, var(--bdw-brand));
+  color: var(--bdw-on-brand);
+  box-shadow: var(--bdw-shadow-xs);
+
+  font-size: var(--bdw-text-sm);
+  font-weight: var(--bdw-weight-semibold);
+  /* 1, not a token: the tokens are text leading, and any of them adds space above
+   * and below a single line inside a box already sized to the glyph. */
+  line-height: 1;
+
+  /* Not inherited tracking, and this one is load-bearing rather than tidy.
+   * letter-spacing adds its width AFTER the last character, so a centred
+   * single-glyph string is pushed off centre by half the tracking - visible at
+   * 28px with --bdw-tracking-caps in the chain. `normal` also protects the Bengali
+   * case, where tracking would sit a gap between a consonant and its matra. */
+  letter-spacing: normal;
+
+  /* Dragging across the header should not leave the letter highlighted; it is
+   * decoration, not content. */
+  user-select: none;
+
+  transition:
+    background-color var(--bdw-fast) var(--bdw-ease),
+    box-shadow var(--bdw-fast) var(--bdw-ease);
+}

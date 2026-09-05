@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600">
+  <!-- Fallback book cover (2:3, same ratio as aspect-cover in
+       tailwind.config.ts). Deliberately quiet: a placeholder should read as
+       "no cover yet", not compete with real covers beside it. Referenced as
+       DEFAULT_COVER_IMAGE in lib/types.ts; CoverImage.tsx serves it as a
+       plain <img> because next/image won't optimize SVG. -->
+  <rect width="400" height="600" fill="#F1EDE5"/>
+  <rect x="0" y="0" width="26" height="600" fill="#E3DCCE"/>
+  <rect x="26" y="0" width="4" height="600" fill="#D2C9B6"/>
+  <g transform="translate(200 265)">
+    <circle cy="-28" r="34" fill="#E8D5A8"/>
+    <path d="M-64 18c19-30 41-45 64-45s45 15 64 45v11H-64V18z" fill="#DDD3C0"/>
+    <path d="M0 26c-17-13-39-17-64-16v38c25-1 47 3 64 16V26z" fill="#FBF8F1"/>
+    <path d="M0 26c17-13 39-17 64-16v38c-25-1-47 3-64 16V26z" fill="#F3EDE0"/>
+  </g>
+  <text x="200" y="420" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" fill="#8C8271">প্রচ্ছদ নেই</text>
+</svg>

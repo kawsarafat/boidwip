@@ -1,0 +1,507 @@
+/* Boidwip admin — design tokens.
+ *
+ * WHY THIS FILE CAN OVERRIDE PAYLOAD WITHOUT A SINGLE !important
+ *
+ * Every rule Payload ships is wrapped in `@layer payload-default` (verify:
+ * node_modules/@payloadcms/next/dist/prod/styles.css opens with
+ * `@layer payload-default;`). Unlayered CSS beats layered CSS regardless of
+ * specificity or source order, so nothing in this directory is layered, and
+ * nothing in it needs to escalate. If a rule here ever stops winning, the cause
+ * is another unlayered rule, not Payload.
+ *
+ * ONE EXCEPTION, and it is a trap: that ordering holds for NORMAL declarations
+ * only. For `!important` ones the cascade runs the other way — every layer beats
+ * unlayered, and the FIRST-declared layer beats the rest — so an unlayered
+ * `!important` here loses to Payload's `!important` in `payload-default` at any
+ * specificity. Adding `!important` to a rule that is already losing therefore
+ * makes it lose harder, which is the opposite of what it looks like. The handful
+ * of `!important` declarations Payload does ship (`grep -o '[^;{]*!important'`
+ * across its styles.css) have to be worked around rather than outranked; the
+ * Lexical gutter note in fields.css is a worked example.
+ *
+ * WHY THE PALETTE IS OVERRIDDEN AT THE ROOT OF THE SCALE
+ *
+ * Payload derives every surface, border and text colour in both themes from one
+ * numeric ramp: `--color-base-0` through `--color-base-1000`. Light mode maps
+ * `--theme-elevation-0` to `--color-base-0`, dark mode maps it to
+ * `--color-base-900`, and so on for all twenty-one steps. So redefining that one
+ * ramp re-tints the entire admin panel, in both themes, consistently, without
+ * touching a single component rule. Chasing individual components instead would
+ * mean dozens of rules that drift out of step on the next Payload upgrade.
+ *
+ * The same trick applies to the accent: Payload's `--color-success-*` ramp is
+ * not green, it is the blue used for focus rings, checkboxes, selections and
+ * links throughout the admin panel (read the rgb values in
+ * node_modules/@payloadcms/ui/dist/scss/colors.scss). Redefining it to the
+ * Boidwip brand blue is what makes the panel look like this site rather than
+ * like a default Payload install.
+ *
+ * THE ADMIN ACCENT IS DELIBERATELY NOT THE PUBLIC SITE'S ACCENT. The public
+ * palette's accent is wine (see app/(frontend)/globals.css); this ramp stays
+ * blue. An admin accent is worn by focus rings, checkboxes and selection
+ * highlights - dozens of them on one screen - and a saturated red in that role
+ * reads as error state on every form. The mark in the corner is the same wine
+ * tile the public header carries, which is what ties the two together.
+ *
+ * The ramp below is this file's own, not an import: nothing in
+ * tailwind.config.ts is a blue scale (the public palette's only blue is
+ * `--download`, reserved to one button), and no file under app/(payload) imports
+ * the stylesheet that carries Tailwind's utilities, so a Tailwind colour could
+ * not reach this panel even if one matched. These twenty-one steps ARE the
+ * definition of the admin's blue, and this file is the only place to change it.
+ *
+ * THE ONE THING TO UNDERSTAND BEFORE CHANGING A NEUTRAL
+ *
+ * An earlier version of this ramp carried a lot of the brand's blue in every
+ * grey — up to 38 points between the red and blue channels at the mid-tones.
+ * The intention was for the greys to look "chosen", and each individual step did.
+ * The effect in aggregate was that every surface, every hairline and every line
+ * of body text was faintly blue at once, so the panel read as a blue interface
+ * with blue accents rather than a neutral one with a blue accent. The ramp below
+ * keeps a deliberate but much smaller cool cast (5 to 11 points of channel
+ * spread, not 38): enough that the greys are not the dead 128/128/128 that reads
+ * as unstyled, small enough that blue stays something the interface uses for
+ * meaning instead of a wash over the whole screen.
+ *
+ * So: the greys are near-neutral on purpose, and the fix for "this screen looks
+ * flat" is a shadow and a surface change, never more blue in a neutral. */
+
+:root {
+  /* ------------------------------------------------------------------
+   * Neutrals: near-neutral grey with a slight cool cast.
+   *
+   * Kept as `rgb()` triples, matching Payload's own format, because these
+   * values feed `--theme-elevation-*` through var() indirection.
+   * ------------------------------------------------------------------ */
+  --color-base-0: rgb(255, 255, 255);
+  --color-base-50: rgb(250, 250, 252);
+  --color-base-100: rgb(244, 245, 248);
+  --color-base-150: rgb(235, 236, 240);
+  --color-base-200: rgb(225, 227, 232);
+  --color-base-250: rgb(213, 215, 221);
+  --color-base-300: rgb(200, 203, 210);
+  --color-base-350: rgb(185, 188, 196);
+  --color-base-400: rgb(168, 172, 181);
+  --color-base-450: rgb(150, 154, 165);
+  --color-base-500: rgb(131, 136, 147);
+  --color-base-550: rgb(115, 120, 131);
+  --color-base-600: rgb(99, 104, 115);
+  --color-base-650: rgb(83, 87, 98);
+  --color-base-700: rgb(67, 71, 81);
+  --color-base-750: rgb(53, 57, 65);
+  --color-base-800: rgb(41, 44, 51);
+  --color-base-850: rgb(30, 33, 39);
+  --color-base-900: rgb(21, 23, 28);
+  --color-base-950: rgb(13, 14, 18);
+  --color-base-1000: rgb(0, 0, 0);
+
+  /* ------------------------------------------------------------------
+   * Accent: the admin's own blue, in Payload's "success" slot.
+   *
+   * 500 is #2F55B8 and 600 is #26469A. They are close to the public site's
+   * `--download` blue (#1D56C5) without being it: that token is reserved to one
+   * button on the public site and reads as "free PDF" there, so the admin does
+   * not borrow it. Payload's dark theme reverses this ramp around the midpoint
+   * but leaves 500 alone, which is why the primary action is the same blue in
+   * both themes rather than drifting lighter in dark mode.
+   *
+   * Measured against white: 500 is 6.75:1 and 600 is 8.60:1, so both clear AA
+   * for body text as a foreground colour and not only as a button fill.
+   * ------------------------------------------------------------------ */
+  --color-success-50: rgb(242, 245, 251);
+  --color-success-100: rgb(227, 234, 246);
+  --color-success-150: rgb(212, 223, 241);
+  --color-success-200: rgb(196, 211, 236);
+  --color-success-250: rgb(178, 197, 229);
+  --color-success-300: rgb(160, 183, 224);
+  --color-success-350: rgb(137, 164, 214);
+  --color-success-400: rgb(114, 145, 204);
+  --color-success-450: rgb(88, 121, 195);
+  --color-success-500: rgb(47, 85, 184);
+  --color-success-550: rgb(43, 78, 170);
+  --color-success-600: rgb(38, 70, 154);
+  --color-success-650: rgb(34, 62, 137);
+  --color-success-700: rgb(30, 54, 119);
+  --color-success-750: rgb(26, 46, 101);
+  --color-success-800: rgb(22, 38, 83);
+  --color-success-850: rgb(18, 30, 65);
+  --color-success-900: rgb(14, 23, 48);
+  --color-success-950: rgb(10, 16, 33);
+
+  /* Payload aliases `--color-blue-*` to the same values as success and uses it
+   * in a few places directly. Kept in step so those places do not stay on the
+   * old teal while everything around them turns brand blue. */
+  --color-blue-50: var(--color-success-50);
+  --color-blue-100: var(--color-success-100);
+  --color-blue-150: var(--color-success-150);
+  --color-blue-200: var(--color-success-200);
+  --color-blue-250: var(--color-success-250);
+  --color-blue-300: var(--color-success-300);
+  --color-blue-350: var(--color-success-350);
+  --color-blue-400: var(--color-success-400);
+  --color-blue-450: var(--color-success-450);
+  --color-blue-500: var(--color-success-500);
+  --color-blue-550: var(--color-success-550);
+  --color-blue-600: var(--color-success-600);
+  --color-blue-650: var(--color-success-650);
+  --color-blue-700: var(--color-success-700);
+  --color-blue-750: var(--color-success-750);
+  --color-blue-800: var(--color-success-800);
+  --color-blue-850: var(--color-success-850);
+  --color-blue-900: var(--color-success-900);
+  --color-blue-950: var(--color-success-950);
+
+  /* ------------------------------------------------------------------
+   * Brand tokens for this project's own admin components.
+   *
+   * Separate names from the --theme-* ones on purpose: --theme-* is Payload's
+   * vocabulary and may be remapped by a future version, while these are ours
+   * and every CSS module under components/payload/ reads them. One place to
+   * change the CMS's accent, shadow depth or motion.
+   * ------------------------------------------------------------------ */
+  --bdw-brand: rgb(47, 85, 184);
+  --bdw-brand-strong: rgb(38, 70, 154);
+  --bdw-brand-soft: rgba(47, 85, 184, 0.09);
+  --bdw-brand-softer: rgba(47, 85, 184, 0.045);
+  --bdw-brand-ring: rgba(47, 85, 184, 0.3);
+  --bdw-on-brand: rgb(255, 255, 255);
+
+  /* Semantic accents for the assistant and dashboard panels. Deliberately not
+   * --theme-success-*, which is the brand blue here and would make a warning
+   * look like a primary action. */
+  --bdw-danger: rgb(198, 60, 60);
+  --bdw-danger-soft: rgba(198, 60, 60, 0.1);
+  /* The hover/active fill for a destructive button. Only danger has a -strong
+   * counterpart because it is the only one of the three that is ever a button
+   * fill: a warning dialog confirms with the ordinary brand primary, since an
+   * amber button with white text fails contrast and an amber button with dark
+   * text reads as a highlight rather than an action. */
+  --bdw-danger-strong: rgb(170, 44, 44);
+  /* Text and icon colour on top of a --bdw-danger fill. A token rather than a
+   * literal white, because dark mode's danger red is a light tint (see below)
+   * and white text on it fails contrast — the readable pairing there is dark
+   * text, which is the opposite of the light-mode answer. */
+  --bdw-on-danger: rgb(255, 255, 255);
+  --bdw-warning: rgb(180, 111, 15);
+  --bdw-warning-soft: rgba(180, 111, 15, 0.1);
+  --bdw-positive: rgb(20, 132, 97);
+  --bdw-positive-soft: rgba(20, 132, 97, 0.1);
+
+  /* Surfaces, expressed through Payload's elevations so they invert with the
+   * theme rather than needing a dark-mode duplicate of every panel. */
+  --bdw-surface: var(--theme-elevation-0);
+  --bdw-surface-raised: var(--theme-elevation-50);
+  --bdw-surface-sunken: var(--theme-elevation-100);
+  --bdw-border: var(--theme-elevation-150);
+  --bdw-border-strong: var(--theme-elevation-250);
+  --bdw-text: var(--theme-elevation-800);
+  --bdw-text-muted: var(--theme-elevation-500);
+  /* A third text weight, between muted and full. Column headings, field labels
+   * and the small print in a card all want something quieter than body text but
+   * still comfortably readable, and reaching for --bdw-text-muted there is what
+   * made those strings look washed out. */
+  --bdw-text-soft: var(--theme-elevation-650);
+
+  /* ------------------------------------------------------------------
+   * Shape and depth.
+   *
+   * Payload's defaults are 3px/4px/8px, which is the visual language of an
+   * older admin panel. Raising them is most of what makes the panel read as
+   * current, and because every component reads these variables it happens
+   * everywhere at once, including inside the Lexical editor.
+   * ------------------------------------------------------------------ */
+  --style-radius-s: 6px;
+  --style-radius-m: 10px;
+  --style-radius-l: 14px;
+
+  --bdw-radius-pill: 999px;
+
+  /* Two-part shadows: a tight contact shadow plus a wide soft one. A single
+   * large blur reads as a glow; the pair reads as an object above a surface.
+   * Tinted with the ramp's own near-black (21,23,28) rather than pure black,
+   * so a shadow on a tinted canvas does not go grey-green at the edges. */
+  --bdw-shadow-xs: 0 1px 2px rgba(21, 23, 28, 0.05);
+  --bdw-shadow-sm: 0 1px 2px rgba(21, 23, 28, 0.05), 0 2px 6px -2px rgba(21, 23, 28, 0.07);
+  --bdw-shadow-md: 0 2px 4px rgba(21, 23, 28, 0.05), 0 8px 20px -6px rgba(21, 23, 28, 0.1);
+  --bdw-shadow-lg: 0 4px 8px rgba(21, 23, 28, 0.07), 0 24px 48px -12px rgba(21, 23, 28, 0.2);
+
+  /* The inverse: a hairline of shade INSIDE the top edge of a control, which is
+   * what makes a text input read as a recess rather than as a bordered rectangle.
+   * A token rather than three copies of the same literal in fields.css, and it has
+   * to be a token because it is the one shadow whose value cannot simply be darker
+   * in the dark theme - a 4%-black inset on a near-black input is nothing at all,
+   * so the dark variant leans on a heavier black against the lighter field fill
+   * Payload gives inputs there. */
+  --bdw-shadow-inset: inset 0 1px 1px rgba(21, 23, 28, 0.04);
+
+  /* ------------------------------------------------------------------
+   * Motion.
+   *
+   * Two durations and two curves for the whole panel. Motion that varies per
+   * component is what makes an interface feel assembled from parts.
+   *
+   * WHY THE CURVE CHANGED
+   *
+   * These were 120ms/240ms on cubic-bezier(0.16, 0.72, 0.3, 1). That curve
+   * spends its first third moving slowly and then accelerates, which is
+   * backwards for a UI transition: the eye catches the slow start, so a hover
+   * or a panel open announces itself as an animation instead of just arriving.
+   * Combined with 240ms on things as large as the nav, the result was motion you
+   * notice rather than motion you feel.
+   *
+   * --bdw-ease is the standard decelerate curve: fastest at the start, settling
+   * at the end. Nothing waits at the beginning, so short transitions read as
+   * immediate. --bdw-ease-out is the same idea taken further, for elements that
+   * enter the screen (menus, dialogs, toasts) where a longer settle looks
+   * intentional rather than slow.
+   * ------------------------------------------------------------------ */
+  --bdw-ease: cubic-bezier(0.32, 0.08, 0.24, 1);
+  --bdw-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --bdw-fast: 100ms;
+  --bdw-slow: 180ms;
+
+  /* Payload's nav slide, which is its own variable and is not read from ours
+   * anywhere upstream. Pointed at --bdw-slow so the sidebar moves on the same
+   * clock as everything else; a 150ms nav beside a 180ms panel is exactly the
+   * kind of near-miss that reads as jank without being identifiable. */
+  --nav-trans-time: var(--bdw-slow);
+
+  /* ------------------------------------------------------------------
+   * Type.
+   *
+   * The Latin stack is Payload's, unchanged. The Bengali faces are appended
+   * rather than prepended, because font-family resolves per glyph: Latin
+   * characters still come from the system UI font, and Bengali characters fall
+   * through to the first installed Bengali face. Nirmala UI ships with Windows
+   * and Noto Sans Bengali with most Linux distributions, so this covers the
+   * editors' machines without a webfont request. A Google Fonts import here
+   * would put a third-party network dependency in front of the CMS login, which
+   * is the one page that has to load when things are going wrong.
+   * ------------------------------------------------------------------ */
+  --font-body:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Nirmala UI", "Noto Sans Bengali", "Hind Siliguri", Kalpurush, SolaimanLipi, sans-serif;
+
+  /* A type scale for this project's own components, in rem so it tracks the
+   * root size set below. Payload sizes its own headings in fixed px through the
+   * SCSS base() function, which is why the heading rules further down restate
+   * them: a scale that only half the screen follows is not a scale.
+   *
+   * The steps are the ones actually needed, not a generated ramp. Anything not
+   * in this list is a sign the component wants a different step, not a new one. */
+  --bdw-text-2xs: 0.7143rem; /* 10px — the smallest legible caps label */
+  --bdw-text-xs: 0.7857rem; /* 11px — pill and badge text */
+  --bdw-text-sm: 0.8571rem; /* 12px — field hints, table meta */
+  --bdw-text-md: 1rem; /* 14px — body, inputs, labels */
+  --bdw-text-lg: 1.1429rem; /* 16px — card titles */
+  --bdw-text-xl: 1.2857rem; /* 18px — panel headings */
+  --bdw-text-2xl: 1.5714rem; /* 22px — view titles */
+  --bdw-text-3xl: 2rem; /* 28px — dashboard greeting, stat figures */
+
+  /* Line heights as unitless multipliers so they compose with any size. */
+  --bdw-leading-tight: 1.2;
+  --bdw-leading-snug: 1.35;
+  --bdw-leading-normal: 1.55;
+  --bdw-leading-relaxed: 1.7;
+
+  /* Optical tracking. Large text set at its default spacing looks loose and
+   * small caps text looks cramped; both are corrected per step rather than
+   * globally, because a single tracking value cannot be right for 10px and
+   * 28px at once. */
+  --bdw-tracking-tight: -0.021em;
+  --bdw-tracking-snug: -0.011em;
+  --bdw-tracking-normal: 0;
+  --bdw-tracking-caps: 0.055em;
+
+  /* Weights, named so a component does not have to decide whether a heading is
+   * 600 or 650. The system UI stack has no 650. */
+  --bdw-weight-normal: 400;
+  --bdw-weight-medium: 500;
+  --bdw-weight-semibold: 600;
+  --bdw-weight-bold: 700;
+
+  /* Spacing, on a 4px grid, for this project's own components.
+   *
+   * Payload's own spacing is `calc(var(--base) * n)` where --base is 20px, which
+   * is a coarse grid: the gap between "a bit tight" and "a bit loose" is 20px
+   * wide and there is nothing in between. That is most of why panels here ended
+   * up with either cramped or cavernous padding and little else. These steps sit
+   * alongside it for the inside of a card, where 20px increments are too big a
+   * unit to compose with. */
+  --bdw-space-1: 4px;
+  --bdw-space-2: 8px;
+  --bdw-space-3: 12px;
+  --bdw-space-4: 16px;
+  --bdw-space-5: 20px;
+  --bdw-space-6: 24px;
+  --bdw-space-8: 32px;
+  --bdw-space-10: 40px;
+  --bdw-space-12: 48px;
+
+  /* Payload computes --base from this, as
+   * calc((var(--base-px) / var(--base-body-size)) * 1rem) with --base-px: 20.
+   * Raising it in step with the root font-size below is what keeps --base at
+   * exactly 20px: (20 / 14) * 14px = 20px. Change one without the other and
+   * every gap, gutter and toolbar height in the panel moves. */
+  --base-body-size: 14;
+
+  /* --gutter-h is deliberately NOT set here.
+   *
+   * Payload declares it three times — 3 baselines at desktop, 2 at tablet, 0.8
+   * on phones — inside media queries in @layer payload-default. Because
+   * unlayered CSS beats layered CSS at every specificity, one flat value in this
+   * block would win against all three, including the mobile one, and silently
+   * give phones a desktop-sized gutter on a 375px screen. Anything overriding a
+   * Payload variable that has responsive declarations has to override every
+   * breakpoint or none: see responsive.css. */
+}
+
+/* ---------------------------------------------------------------------------
+ * The global type baseline.
+ *
+ * Payload sets `html { font-size: 13px; line-height: 20px }` (SCSS
+ * $baseline-body-size, applied through the %body placeholder in
+ * node_modules/@payloadcms/ui/dist/scss/type.scss) and drops it to 12px at
+ * 1024px and below. 13px body text in a tool an editor reads for hours is the
+ * single largest reason the panel felt cramped, and it is not something padding
+ * can fix: at 13px there is no room between the lines for the padding to matter.
+ *
+ * 14px, with --base-body-size raised to match so --base stays at 20px. The
+ * 1024px step is restated in responsive.css, because a value declared once
+ * unlayered here would beat Payload's own breakpoint the same way a flat
+ * --gutter-h would; see the note above.
+ *
+ * WHY THE HEADINGS ARE RESTATED
+ *
+ * Payload's headings are fixed px from base(): h1 32px, h2 26px, h3 20px,
+ * h4 16px, h5 13px, h6 12px, all at weight 500 and default tracking. Two
+ * problems with leaving them. h5 and h6 land at or below the new body size, so a
+ * heading can be smaller than the paragraph under it. And large text at default
+ * tracking looks loose, which is most of what separates a considered interface
+ * from a functional one — it is the difference an editor reads as "professional"
+ * without being able to name it.
+ * --------------------------------------------------------------------------- */
+html {
+  font-size: 14px;
+  line-height: var(--bdw-leading-normal);
+  /* Payload sets -webkit-font-smoothing already; the Firefox/macOS counterpart
+   * is not set anywhere upstream and its absence is visible as slightly heavier
+   * text there than in Chrome. */
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  /* Contextual alternates and kerning are on by default in most browsers but
+   * are switched off by some resets; stating them costs nothing and keeps the
+   * Bengali faces' conjunct forms correct, which matters here more than it
+   * would in a Latin-only panel. */
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+h1 {
+  font-size: var(--bdw-text-3xl);
+  line-height: var(--bdw-leading-tight);
+  letter-spacing: var(--bdw-tracking-tight);
+  font-weight: var(--bdw-weight-bold);
+}
+
+h2 {
+  font-size: var(--bdw-text-2xl);
+  line-height: var(--bdw-leading-tight);
+  letter-spacing: var(--bdw-tracking-tight);
+  font-weight: var(--bdw-weight-semibold);
+}
+
+h3 {
+  font-size: var(--bdw-text-xl);
+  line-height: var(--bdw-leading-snug);
+  letter-spacing: var(--bdw-tracking-snug);
+  font-weight: var(--bdw-weight-semibold);
+}
+
+h4 {
+  font-size: var(--bdw-text-lg);
+  line-height: var(--bdw-leading-snug);
+  letter-spacing: var(--bdw-tracking-snug);
+  font-weight: var(--bdw-weight-semibold);
+}
+
+h5 {
+  font-size: var(--bdw-text-md);
+  line-height: var(--bdw-leading-snug);
+  letter-spacing: var(--bdw-tracking-normal);
+  font-weight: var(--bdw-weight-semibold);
+}
+
+h6 {
+  font-size: var(--bdw-text-sm);
+  line-height: var(--bdw-leading-snug);
+  letter-spacing: var(--bdw-tracking-caps);
+  font-weight: var(--bdw-weight-semibold);
+  text-transform: uppercase;
+  color: var(--bdw-text-soft);
+}
+
+/* Dark theme adjustments that are not just a palette inversion.
+ *
+ * Payload already flips every elevation, so nothing here repeats that. These
+ * are the two things a flip gets wrong: shadows tuned for dark ink on a light
+ * surface disappear on a dark one (so they are deepened), and a translucent
+ * brand tint that reads as a hint of colour on white reads as invisible on
+ * near-black (so it is strengthened). */
+html[data-theme="dark"] {
+  /* The mid-ramp accent is too dark to read as a colour against a near-black
+   * surface, so the tints and the ring are mixed from the light end of the ramp
+   * (--color-success-300) rather than from --bdw-brand itself. --bdw-brand stays
+   * the same value in both themes: it is a button fill with white text, and that
+   * pairing works on either canvas. */
+  --bdw-brand-soft: rgba(160, 183, 224, 0.16);
+  --bdw-brand-softer: rgba(160, 183, 224, 0.09);
+  --bdw-brand-ring: rgba(160, 183, 224, 0.4);
+
+  --bdw-danger: rgb(240, 116, 116);
+  --bdw-danger-soft: rgba(240, 116, 116, 0.15);
+  /* Inverted relative to light mode: on a near-black surface the hover state has
+   * to get brighter, not darker, or the button appears to recede under the
+   * cursor. */
+  --bdw-danger-strong: rgb(247, 146, 146);
+  --bdw-on-danger: rgb(62, 12, 12);
+  --bdw-warning: rgb(232, 168, 76);
+  --bdw-warning-soft: rgba(232, 168, 76, 0.15);
+  --bdw-positive: rgb(52, 190, 143);
+  --bdw-positive-soft: rgba(52, 190, 143, 0.15);
+
+  --bdw-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --bdw-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px -2px rgba(0, 0, 0, 0.5);
+  --bdw-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 20px -6px rgba(0, 0, 0, 0.6);
+  --bdw-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.5), 0 24px 48px -12px rgba(0, 0, 0, 0.7);
+  --bdw-shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.28);
+
+  /* Payload's dark overlay is a neutral near-black at half opacity, which lets
+   * the page behind a dialog stay legible enough to compete with it. Tinted to
+   * the ramp's own darkest step and taken deeper so the dialog is the only thing
+   * with contrast on screen. */
+  --theme-overlay: rgba(13, 14, 18, 0.72);
+}
+
+/* Respect the OS setting. Every transition and keyframe in this directory is
+ * decorative: the interface is fully usable with all of it switched off, and
+ * animation on an admin panel someone uses for hours is not worth triggering
+ * vestibular symptoms over. Stated once here rather than in each file. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --bdw-fast: 1ms;
+    --bdw-slow: 1ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

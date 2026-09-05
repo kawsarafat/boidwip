@@ -1,0 +1,304 @@
+/* Boidwip admin — canvas and paper.
+ *
+ * WHAT THIS FILE IS FOR
+ *
+ * Payload paints one colour behind everything: `--theme-bg`, which is
+ * `--theme-elevation-0`, which is white. Cards, tables and the sidebar were
+ * already given borders and radii in chrome.css, but a white card on a white page
+ * is only its border, so the panel read as a set of outlines rather than as
+ * objects on a surface. This file separates the two: the page becomes a tinted
+ * canvas and everything that was already a card starts to float on it.
+ *
+ * It is deliberately the smallest possible change to get there. Because
+ * chrome.css expresses every card fill as `--bdw-surface` (which is
+ * `--theme-elevation-0`, so white in light and near-black in dark), tinting the
+ * canvas is enough on its own to turn the list table, the login panel, the
+ * relationship cards and the folder grid into floating paper. Nothing in
+ * chrome.css needed editing.
+ *
+ * WHY NOT JUST REDEFINE --theme-bg
+ *
+ * One line, and it looked right until you opened a drawer. `--theme-bg` is also
+ * the fill of `.drawer__content`, the sticky rich-text toolbar,
+ * `.file-field__filename` and four gradient fade-masks. A drawer is paper sitting
+ * on top of the app, not canvas, so tinting it makes the drawer read as a hole in
+ * the page. So the canvas gets its own token and the handful of shell surfaces
+ * that genuinely follow the page (not the paper) are repointed at it below.
+ *
+ * That list is the maintenance burden of this file, and it is finite: the four
+ * fade-masks, the two sticky bars, and the app header's blur fill. Each of them
+ * exists to blend INTO the page background, so each of them is wrong the moment
+ * the page background is not what Payload thinks it is. A mask still fading to
+ * white over a tinted canvas is a visible pale smear, which is exactly the kind
+ * of defect that gets described as "it just looks a bit off".
+ *
+ * Unlayered, and imported after chrome.css so the `.nav` fill here wins. See
+ * tokens.css for why no !important is needed against Payload itself. */
+
+:root {
+  /* Base-100 rather than base-50. 50 is close enough to white that on a laptop
+   * screen at an angle the canvas and the cards merge, which defeats the point;
+   * 100 still reads as a light interface but keeps a visible step. Both values
+   * carry brand blue (see the neutrals note in tokens.css), so the tint is a
+   * cool slate rather than a grey. */
+  --bdw-canvas: var(--color-base-100);
+}
+
+html[data-theme="dark"] {
+  /* Dark mode inverts the relationship rather than the value. `--bdw-surface` is
+   * elevation-0, which is base-900 here, so the canvas has to go DARKER than the
+   * cards, not lighter: base-950. Reaching for base-850 (the light-mode
+   * intuition of "one step off white") would put the canvas above the paper and
+   * every card would read as a dent. */
+  --bdw-canvas: var(--color-base-950);
+}
+
+/* ---------------------------------------------------------------------------
+ * The shell
+ *
+ * .template-default is the authenticated grid, .template-default__wrap the
+ * content column inside it, .template-minimal the shell for login and the other
+ * three unauthenticated screens. All three set the page fill themselves, so all
+ * three need repointing; the wrap is the one that actually shows.
+ * --------------------------------------------------------------------------- */
+
+.template-default,
+.template-default__wrap,
+.template-minimal {
+  background-color: var(--bdw-canvas);
+}
+
+/* The sidebar becomes paper, the same white as the cards beside it, rather than
+ * the one-step-off-page elevation-50 it had when the page was white. Sidebar and
+ * cards sharing one fill is what makes the canvas read as a single surface with
+ * things placed on it, instead of three greys in a row. */
+.nav {
+  background: var(--bdw-surface);
+}
+
+/* The per-collection document count in the sidebar. Payload gives it
+ * `background: var(--theme-bg)`, which was white text-background on a white page:
+ * invisible then, and still invisible now that the nav is white. A tinted pill is
+ * what the element was evidently meant to be. */
+.collection-type__count {
+  background-color: var(--bdw-canvas);
+  color: var(--bdw-text-muted);
+  padding: 0 6px;
+  border-radius: var(--bdw-radius-pill);
+  font-size: var(--bdw-text-xs);
+}
+
+/* ---------------------------------------------------------------------------
+ * The fade-masks
+ *
+ * Five elements exist purely to fade a horizontally-scrollable strip out at its
+ * right edge: the breadcrumb trail, its placeholder, the document's tab row, and
+ * the two halves of the document toolbar. Each is a gradient to `--theme-bg`, so
+ * each was a pale smear the moment the page stopped being white. What each one
+ * should fade to is whatever is actually behind it, and here that is the canvas
+ * for all five: the toolbar's own `.doc-controls__wrapper` is itself faded to the
+ * canvas (chrome.css), so the meta strip's mask fades to the same value as the
+ * four that sit directly on the canvas rather than to a whiter composite.
+ *
+ * They are unconditional here although Payload gives some of them `content` only at
+ * 1024px and below. Above that there is no box to paint and the declaration is inert,
+ * which is cheaper than restating a breakpoint in a second file. Turbopack rewrites
+ * ::after to :after, so these are the same selectors Payload uses: they win on being
+ * unlayered, not on specificity.
+ * --------------------------------------------------------------------------- */
+
+.step-nav::after,
+.app-header__gradient-placeholder,
+.doc-tabs::after,
+.doc-controls__controls::after,
+.doc-controls__meta::after {
+  background: linear-gradient(to right, transparent, var(--bdw-canvas));
+}
+
+/* ---------------------------------------------------------------------------
+ * The sticky bars
+ *
+ * Both of these are opaque strips that sit over scrolling content and have to
+ * match the page behind them, or they announce themselves as they pass over it.
+ * --------------------------------------------------------------------------- */
+
+.doc-controls__controls-wrapper,
+.bulk-upload--actions-bar {
+  background-color: var(--bdw-canvas);
+}
+
+/* The bulk-selection bar is fixed to the bottom of a list view. It is the one
+ * "sticky bar" here that should NOT match the canvas: it appears only when rows
+ * are selected and it carries destructive actions, so it wants to read as a
+ * panel that has arrived over the list rather than as part of the page. */
+.collection-list__list-selection {
+  background-color: var(--bdw-surface);
+  border-block-start: 1px solid var(--bdw-border);
+  box-shadow: var(--bdw-shadow-md);
+}
+
+/* The app header's fill, faded in by Payload on scroll. chrome.css owns the blur
+ * on this element; the colour is here because it has to follow the canvas or the
+ * header brightens as soon as the page scrolls. */
+.app-header__bg {
+  background: color-mix(in srgb, var(--bdw-canvas) 82%, transparent);
+}
+
+/* ---------------------------------------------------------------------------
+ * Login and the other unauthenticated screens
+ *
+ * chrome.css gives .template-minimal__wrap its border, radius and shadow; the fill
+ * is here, because paper on canvas is the whole point of the change and this is
+ * the screen it matters most on.
+ * --------------------------------------------------------------------------- */
+
+.template-minimal__wrap {
+  background: var(--bdw-surface);
+}
+
+/* ---------------------------------------------------------------------------
+ * The document editor
+ *
+ * Lists and the dashboard are collections of objects, so they belong on canvas.
+ * An edit screen is one document, and a single sheet of paper is what it should
+ * look like -- as a card with margins, its own inner inset and rounded corners,
+ * not as a fill that runs to the edges of the region.
+ *
+ * `.collection-edit__main` is the full content width (canvas edge to canvas
+ * edge). Filling IT with paper was the obvious way to do this and it was wrong:
+ * the row above it (`.doc-header` and `.doc-controls`, both `.gutter` elements)
+ * leaves its own 60px `--gutter-h` margins on the canvas, so the same column of
+ * pixels was canvas beside the toolbar and abruptly white beside the first
+ * field. That seam -- a grey notch sitting on top of a white band that ran to
+ * the sidebar border -- is what read as an unfinished white slab rather than as
+ * a sheet of paper.
+ *
+ * So the paper is the fields' own gutter element, and the gutter is converted
+ * into the card's margin. Payload gives `.document-fields__edit`
+ * `padding-inline: var(--main-gutter-h-left) var(--main-gutter-h-right)` -- 60px
+ * and 40px on a document with a sidebar, the first of which is exactly the inset
+ * the toolbar above keeps. Moving those two figures from padding to margin puts
+ * the sheet's EDGE on the gutter line the toolbar's text sits on, which is the
+ * same relationship the list view's table card has, and frees the padding to be
+ * the sheet's own inner inset. Neither figure is restated: both are read back
+ * from Payload's own custom properties, which it redeclares per layout variant (a
+ * document whose sidebar renders no fields gets `--gutter-h` on both sides) and
+ * per breakpoint, so the margins follow all of that for free.
+ *
+ * An earlier version painted the border box and clipped it with
+ * `background-clip: content-box`. That produced the canvas gutters correctly and
+ * then had nowhere to put an inset, because the content box IS the paint: every
+ * field label started on the paper's first pixel, flush against its edge. A
+ * clipped fill also cannot take a `border-radius` -- the corners it would round
+ * are not the corners being painted -- so both halves of "stuck to the container,
+ * and the corners are too sharp" came from the same line.
+ *
+ * The top offset is SPLIT rather than replaced. Payload's `padding-top` here is
+ * `calc(var(--base) * 1.5)` = 30px, and `.document-fields__sidebar-fields` uses
+ * the same figure; that is what puts the first field of the main column and the
+ * first panel of the sidebar rail on one line (both measured y=246). 10px of
+ * margin plus 20px of padding keeps the sum, give or take the hairline's own
+ * pixel, so the sheet gains a canvas gap below the toolbar without knocking the
+ * two columns out of step.
+ *
+ * `overflow` is deliberately not set. The rich-text field's toolbar is
+ * `position: sticky` inside this box and an `overflow: hidden` ancestor silently
+ * kills sticky; nothing here needs clipping anyway, since the radius is now on
+ * the box that is actually painted.
+ *
+ * TABS AND TOP-LEVEL GROUPS ARE THE ONE THING THIS CONVERSION BREAKS, and they
+ * are no longer hypothetical: Books, Authors and Publishers all render tabs, and
+ * Books' `bibliographic` group is a named top-level group inside one of them.
+ * Payload gives both fields a full-bleed treatment written for a container padded
+ * by `--gutter-h`:
+ *
+ *   .tabs-field              { margin-inline: calc(var(--gutter-h) * -1) }
+ *   .tabs-field__content-wrap{ padding-inline: var(--gutter-h) }
+ *   .tabs-field__tabs::before/::after { width: var(--gutter-h) }
+ *   .group-field             { margin-inline: calc(var(--gutter-h) * -1) }
+ *   .group-field--top-level  { padding: var(--base) var(--gutter-h) }
+ *
+ * On this card the padding is 24px, not 60px, so every one of those pulled the
+ * element 36px PAST the rounded edge on both sides -- a tab strip and a pair of
+ * hairline rules hanging out over the canvas. The fix is not to cancel the bleed
+ * (a tab strip inset from the card's edge reads as a divider rather than as the
+ * card's own chrome) but to re-point it at the inset this card actually uses,
+ * which is why that figure is a custom property below rather than a literal in
+ * the padding shorthand: responsive.css re-declares `--bdw-sheet-inset` at the
+ * phone breakpoint and these five rules follow it for free.
+ *
+ * `--top-level` is the correct hook for the group rules and `.group-field` is
+ * not, because unlayered CSS beats Payload's layered CSS at equal specificity:
+ * a bare `.group-field` override here would also flatten the `--within-row`,
+ * `--within-group` and `--within-collapsible` variants that Payload sets margins
+ * to zero on. `isTopLevel` in Payload's GroupField is `!(isWithinCollapsible ||
+ * isWithinGroup || isWithinRow)`, i.e. exactly the complement of those three --
+ * so scoping to it changes the bleeding case and nothing else. (A group inside a
+ * tab is still top-level by that test, which is why Books' group needs this.)
+ *
+ * Globals get the same card: `.global-edit__main` does not exist in Payload's
+ * stylesheet, but `.document-fields__edit` is the same element in both views, so
+ * Site settings and Affiliate settings are already covered by the rules below.
+ * --------------------------------------------------------------------------- */
+
+.collection-edit__main {
+  background-color: transparent;
+}
+
+.document-fields__edit {
+  /* The card's inner inset, as a property rather than a literal, because four
+   * other rules in this file have to agree with it. See the note above. */
+  --bdw-sheet-inset: calc(var(--base) * 1.2);
+  background-color: var(--bdw-surface);
+  /* Payload draws `--main-border` on the two inline sides only, and it is a 1px
+   * `--theme-elevation-100` -- the canvas colour, so invisible rather than absent.
+   * On a rounded card two invisible side stubs are no use; a hairline on all four
+   * edges is what makes the sheet read as an object. */
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-l);
+  box-shadow: var(--bdw-shadow-xs);
+  margin-inline: var(--main-gutter-h-left) var(--main-gutter-h-right);
+  margin-block-start: calc(var(--base) * 0.5);
+  padding-inline: var(--bdw-sheet-inset);
+  padding-block-start: calc(var(--base) * 1);
+}
+
+/* The five full-bleed rules, re-pointed from `--gutter-h` at the card's own
+ * inset. Scoped to the sheet so a tabs field in a drawer -- which is padded by
+ * Payload's own figure -- is left alone. */
+.document-fields__edit .tabs-field {
+  margin-inline: calc(var(--bdw-sheet-inset) * -1);
+}
+
+.document-fields__edit .tabs-field__content-wrap {
+  padding-inline: var(--bdw-sheet-inset);
+}
+
+/* Flex spacers, not padding: they indent the first tab label to the content line
+ * while the strip's underline still spans the full width of the card. */
+.document-fields__edit .tabs-field__tabs::before,
+.document-fields__edit .tabs-field__tabs::after {
+  width: var(--bdw-sheet-inset);
+}
+
+.document-fields__edit .group-field--top-level {
+  margin-inline: calc(var(--bdw-sheet-inset) * -1);
+  padding-inline: var(--bdw-sheet-inset);
+}
+
+/* A document with no sidebar at all -- the account screen and any collection whose
+ * fields are all in the main column. Payload's asymmetric 60/40 pair is a
+ * has-sidebar figure: the narrow side is the channel between the fields and the
+ * sidebar rail, and `.document-fields--has-sidebar .document-fields__edit` is what
+ * applies it. On a `--no-sidebar` document Payload falls back to `.gutter--left`
+ * and `.gutter--right`, both `--gutter-h`, so the two custom properties above
+ * (which are declared unconditionally, sidebar or not) would put the card's right
+ * edge 20px closer to the canvas edge than its left with nothing out there to
+ * justify it. Even margins, read from the same gutter Payload used.
+ *
+ * The other full-width case needs nothing: a document whose sidebar renders no
+ * fields is `--has-sidebar` with an `:empty` rail, and Payload already resets both
+ * properties to `--gutter-h` for it. */
+.document-fields--no-sidebar .document-fields__edit {
+  margin-inline: var(--gutter-h);
+}

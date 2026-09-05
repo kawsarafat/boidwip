@@ -1,0 +1,68 @@
+/* The login-screen lockup: tile plus wordmark.
+ *
+ * Payload centres this for us — `.login__brand` is
+ * `display: flex; justify-content: center; width: 100%` — so this file only has
+ * to lay out the inside of the lockup, not position it on the page.
+ *
+ * Sizes are absolute rather than derived from --base. The login screen is the one
+ * view that does not carry the panel's document chrome, and a logo that changes
+ * size when the root font-size drops from 13px to 12px at the tablet breakpoint
+ * is a logo that has two versions. Everything else in the admin theme scales;
+ * this deliberately does not. */
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.tile {
+  /* flex-basis fixed, because the wordmark next to it is the flexible part: with
+   * `flex: 1` behaviour the tile would squash to an oval on a narrow phone. */
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  /* A contact shadow only. The tile is already a saturated block on a near-white
+   * card, so a wide shadow reads as a glow behind it rather than as depth. */
+  box-shadow: var(--bdw-shadow-sm);
+}
+
+.words {
+  display: flex;
+  flex-direction: column;
+  /* Tight, because these two lines are one object. Anything looser and the
+   * tagline reads as a separate paragraph that happens to sit under a heading. */
+  gap: 1px;
+  min-width: 0;
+}
+
+.wordmark {
+  /* clamp() rather than a media query: the only thing that constrains this is the
+   * viewport width on a small phone, and there is one number to interpolate. */
+  font-size: clamp(1.15rem, 5vw, 1.4rem);
+  font-weight: 700;
+  /* Negative tracking on a Latin wordmark at display size, which is where the
+   * default spacing starts to look loose. Safe here specifically because
+   * the wordmark is Latin — see .tagline for why the line below cannot have it. */
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--bdw-text);
+  white-space: nowrap;
+}
+
+.tagline {
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--bdw-text-muted);
+  /* NO letter-spacing and NO text-transform on this line, even though small
+   * tracked capitals are the obvious treatment for a tagline and are used on the
+   * nav group headings in chrome.css.
+   *
+   * The text is Bengali. `text-transform: uppercase` does nothing at all —
+   * Bengali is unicase — and `letter-spacing` is worse than useless: it inserts
+   * space between every glyph in a cluster, which pulls the matra headstroke
+   * apart from the letters hanging off it and breaks conjuncts into their
+   * components. The result is not "spaced out", it is misspelt. */
+}
