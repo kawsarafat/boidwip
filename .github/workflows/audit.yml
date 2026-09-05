@@ -1,0 +1,65 @@
+# Scheduled dependency audit (audit #20: "dependency automation missing").
+#
+# SEPARATE FROM ci.yml ON PURPOSE. An advisory is published against code that
+# has not changed, so tying the check to a push means a pull request fails for
+# something its author did not do — and the usual response to that is to stop
+# reading the failure. This runs on a clock instead, and on the pull requests
+# that actually change what gets installed.
+#
+# WHY THERE IS NO `npm ci` HERE. `npm audit` resolves the advisory database
+# against the lockfile, so it needs neither node_modules nor a build. That also
+# means it cannot execute a compromised install script while looking for one.
+#
+# The other half of #20 — Dependabot — is .github/dependabot.yml. The parts that
+# cannot live in a file (branch protection, required status checks, and secret
+# scanning with push protection) are repository settings; SECURITY.md records
+# what they need to be set to.
+
+name: Dependency audit
+
+on:
+  schedule:
+    # 04:23 UTC on Mondays. Off the hour deliberately: scheduled workflows all
+    # queue at :00 and GitHub drops the runs it cannot dispatch in time.
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+  # A change to what is installed gets audited before it merges rather than
+  # being discovered by next Monday's run.
+  pull_request:
+    paths:
+      - package.json
+      - package-lock.json
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.x"
+
+      # Same pin as ci.yml, for the same reason: `npm audit` reads
+      # package-lock.json, and two npm majors do not read it identically. See the
+      # note at the top of ci.yml.
+      - name: Pin npm
+        run: npm install --global npm@11
+
+      # The gate. High and critical only: those are the ones worth blocking a
+      # merge over, and a lower bar here would mean a moderate advisory in a
+      # build-time-only package could hold up a content fix.
+      - name: High and critical advisories
+        run: npm audit --audit-level=high
+
+      # Everything else, reported but never failing, so the moderate and low
+      # findings are visible in the log when someone comes looking rather than
+      # invisible until they are upgraded to high.
+      - name: Full advisory list (informational)
+        if: ${{ !cancelled() }}
+        run: npm audit || true

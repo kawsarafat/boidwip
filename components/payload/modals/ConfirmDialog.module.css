@@ -1,0 +1,323 @@
+/* The confirmation dialog.
+ *
+ * Geometry notes, because the element this styles is not a plain div: it is the
+ * <dialog> that @faceless-ui/modal's asModal() portals into Payload's
+ * .payload__modal-container, and three separate stylesheets have already had an
+ * opinion about it before this file runs.
+ *
+ *  - The container is `position: fixed; inset: 0; pointer-events: none` and only
+ *    becomes interactive once a modal is open (injected at runtime by
+ *    @faceless-ui/modal's generateCSS).
+ *  - The <dialog> itself arrives as `position: absolute; min-height: 100%` from
+ *    the same source, plus `width: 100%; border: 0; padding: 0` from Payload's
+ *    app.scss reset. So it is already a full-viewport box, and .dialog below only
+ *    has to centre things inside it.
+ *  - `visibility` is owned by the CSSTransition classes on
+ *    `.payload__modal-item`. Nothing here touches visibility or display.
+ *
+ * WHY THE MOTION IS KEYFRAMES AND NOT TRANSITIONS
+ *
+ * A transition needs the browser to paint an initial state before the class
+ * changes, and this element does not get one: it mounts while `open` is still
+ * false, so it is `display: none` for its first commit and nothing is painted.
+ * Keyframes have no such requirement — an animation on an element that becomes
+ * displayed plays from 0%. Swapping animation-name (the .closing modifier) also
+ * restarts it cleanly, which is what drives the exit.
+ *
+ * Reduced motion is handled centrally: the block at the bottom of
+ * app/(payload)/theme/tokens.css clamps every animation in the panel to 1ms.
+ * ConfirmProvider.tsx checks the same media query in JS so it does not sit on a
+ * timer waiting for an animation that is not running. */
+
+.dialog {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--base) * 1);
+  /* Above Payload's drawers, which start at z-index 100 (drawerZBase in
+   * @payloadcms/ui/dist/elements/Drawer) and count upwards with nesting depth.
+   * A confirmation raised from inside a relationship drawer has to sit over it,
+   * or the editor is asked a question they cannot see. 200 leaves room for a
+   * hundred levels of drawer nesting, which is ninety-nine more than exist. */
+  z-index: 200;
+}
+
+/* The scrim. `fixed` rather than `absolute` so it covers the viewport even when
+ * a long body grows the dialog box past one screen and the page scrolls.
+ *
+ * NO `-webkit-backdrop-filter` LINE. It was here, after the standard property, and
+ * that is what removed this blur entirely: Lightning CSS takes an author-written
+ * prefix as the intended output and emits only it, and the browser does not
+ * recognise `-webkit-backdrop-filter` at all, so the declaration was dropped at
+ * parse time and the emitted rule had no blur in it. Lightning CSS adds whatever
+ * prefixes the project's browser targets need. Full account in the .app-header__bg
+ * note in app/(payload)/theme/chrome.css. */
+.dialog::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--theme-overlay);
+  backdrop-filter: blur(4px);
+  animation: scrimIn var(--bdw-fast) linear both;
+}
+
+.card {
+  position: relative;
+  /* Above the scrim, which is a sibling pseudo-element on the same stacking
+   * context. */
+  z-index: 1;
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--base) * 0.9);
+  padding: calc(var(--base) * 1.1);
+  background: var(--bdw-surface);
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-l);
+  box-shadow: var(--bdw-shadow-lg);
+  animation: cardIn var(--bdw-slow) var(--bdw-ease) both;
+}
+
+/* Applied by the provider for the length of the exit, before Payload's modal
+ * state is actually closed. Without this the dialog would vanish between two
+ * frames: Payload configures @faceless-ui/modal with `transTime: 0`, so its own
+ * exit transition has no duration to play in. */
+.closing .card {
+  animation: cardOut var(--bdw-fast) var(--bdw-ease) both;
+}
+
+.closing::before {
+  animation: scrimOut var(--bdw-fast) linear both;
+}
+
+/* Nothing is clickable once the answer is in. The provider also refuses a second
+ * settle() while closing, so this is belt-and-braces — but it is the half that
+ * stops the buttons from responding visually to a hover or press during the exit,
+ * which is what makes a dialog look like it did not hear the first click. */
+.closing {
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+ * Contents
+ * -------------------------------------------------------------------------- */
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--base) * 0.6);
+}
+
+.icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--style-radius-m);
+}
+
+.icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.iconDanger {
+  background: var(--bdw-danger-soft);
+  color: var(--bdw-danger);
+}
+
+.iconWarning {
+  background: var(--bdw-warning-soft);
+  color: var(--bdw-warning);
+}
+
+.iconInfo {
+  background: var(--bdw-brand-soft);
+  color: var(--bdw-brand);
+}
+
+.text {
+  /* min-width: 0 lets a long unbroken string wrap instead of forcing the flex
+   * row wider than the card. */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--base) * 0.25);
+  padding-block-start: calc(var(--base) * 0.15);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--bdw-text);
+}
+
+.body {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--bdw-text-muted);
+  /* A dialog that grows taller than the viewport puts its buttons off-screen,
+   * which is unrecoverable inside a focus trap. Bounding the prose instead keeps
+   * the controls visible no matter what a caller passes. */
+  max-height: 46vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.body > :first-child {
+  margin-block-start: 0;
+}
+
+.body > :last-child {
+  margin-block-end: 0;
+}
+
+.controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: calc(var(--base) * 0.4);
+}
+
+/* The destructive confirm button.
+ *
+ * Payload's Button accepts buttonStyle="error", but no `.btn--style-error` rule
+ * exists in its compiled CSS (only dashed, icon-label, none, pill, primary,
+ * secondary, subtle and tab do), so that variant renders an unfilled button.
+ * A primary button with its custom properties reassigned is the working route,
+ * and it inherits every size, disabled and focus behaviour for free.
+ *
+ * Two classes deep on purpose. `.btn--style-primary` in
+ * app/(payload)/theme/fields.css sets the same properties at one class of
+ * specificity, and both stylesheets are unlayered, so a single class here would
+ * leave the winner to be decided by whichever file the bundler emitted last. */
+.dialog .confirmDanger {
+  --bg-color: var(--bdw-danger);
+  --hover-bg: var(--bdw-danger-strong);
+  --color: var(--bdw-on-danger);
+  --hover-color: var(--bdw-on-danger);
+}
+
+/* --------------------------------------------------------------------------
+ * Motion
+ *
+ * The card rises and settles; it does not bounce. An overshoot curve on a
+ * question about deleting a chapter reads as playful, which is the wrong register
+ * for the only dialog in the panel that cannot be undone.
+ * -------------------------------------------------------------------------- */
+
+@keyframes scrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scrimOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cardOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+}
+
+/* A slide rather than a scale for the phone layout below, matching the
+ * bottom-sheet position. Scaling a near-full-width sheet is visible as the edges
+ * moving inward, which looks like a rendering glitch rather than an entrance.
+ *
+ * Declared at the top level even though only the media query uses them.
+ * `@keyframes` inside `@media` is legal CSS, but the name is also a CSS-modules
+ * identifier that gets hashed, and keeping the declaration unconditional avoids
+ * depending on the bundler handling that nesting correctly. */
+
+@keyframes cardInMobile {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cardOutMobile {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Phones
+ *
+ * 768px is Payload's own small breakpoint (see app/(payload)/theme/responsive.css
+ * for why every breakpoint in this project uses its numbers).
+ * -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .dialog {
+    /* Bottom-aligned. A centred dialog on a phone sits above the thumb and under
+     * the notch; sitting it on the bottom edge puts the buttons where the hand
+     * already is. */
+    align-items: flex-end;
+    padding: calc(var(--base) * 0.6);
+  }
+
+  .card {
+    max-width: none;
+    animation: cardInMobile var(--bdw-slow) var(--bdw-ease) both;
+  }
+
+  .closing .card {
+    animation: cardOutMobile var(--bdw-fast) var(--bdw-ease) both;
+  }
+
+  .controls {
+    /* Stacked, and reversed: the DOM order is cancel-then-confirm (so the focus
+     * trap lands on cancel), and column-reverse renders that as confirm above
+     * cancel. On a phone the bottom of the screen is the reachable end, and the
+     * destructive action should not be the thing nearest the thumb. */
+    flex-direction: column-reverse;
+  }
+
+  .body {
+    max-height: 40vh;
+  }
+}
+

@@ -1,0 +1,12 @@
+/* The header icon.
+ *
+ * Fill the container and let Payload decide how big that is — its own
+ * PayloadIcon is `height: 100%; width: 100%` and its container is
+ * `.step-nav__home`, a 16px square. Matching the contract rather than restating
+ * the 16px means this keeps working if Payload resizes that box or reuses the
+ * slot somewhere larger. */
+
+.icon {
+  width: 100%;
+  height: 100%;
+}

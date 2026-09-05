@@ -1,0 +1,604 @@
+/* Boidwip admin — the views.
+ *
+ * WHERE THIS FILE SITS IN THE SET
+ *
+ * chrome.css restyles the shell an editor sees on every screen (nav, app header,
+ * document toolbar, table, pills, dialogs). fields.css restyles the form controls.
+ * surfaces.css owns the canvas and which regions are paper. This file is the
+ * page-level furniture of the individual views: the list toolbar, the pagination
+ * footer, the document editor's right-hand rail, the versions screen, and the three
+ * small standalone screens.
+ *
+ * Split out rather than appended to chrome.css because "the shell" and "a page" are
+ * different things to reason about, and chrome.css was already 529 lines. Imported
+ * after fields.css and before responsive.css - see app/(payload)/layout.tsx.
+ *
+ * Unlayered, like everything in this directory: Payload ships its rules inside
+ * `@layer payload-default`, and unlayered CSS beats layered CSS regardless of
+ * specificity, so nothing here needs !important. Against each other the ordinary
+ * cascade applies, which is why import order is load-bearing.
+ *
+ * WHAT "ALL PAGES FOLLOW ONE DESIGN LANGUAGE" MEANS HERE, CONCRETELY
+ *
+ * One repeated idea: a bordered white card with a small shadow, sitting on the tinted
+ * canvas, holding one job. The dashboard's stat cards, the list's toolbar, the list's
+ * table, its pagination footer and the standalone screens are all that same object at
+ * different sizes. Payload's defaults instead give each of those a different grey
+ * (elevation-50 for the search bar, elevation-100 for the current page button, none at
+ * all for the pagination row), which is the specific reason the panel still read as
+ * Payload with a coat of paint on the dashboard only.
+ *
+ * Every selector here was checked against Payload 3.88's compiled CSS
+ * (node_modules/@payloadcms/ui/dist/styles.css and
+ * node_modules/@payloadcms/next/dist/prod/styles.css) before being written. A
+ * selector that matches nothing is this directory's worst failure mode: it produces
+ * no error, no warning, and no effect.
+ * --------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------------
+ * View titles
+ *
+ * Payload renders the list title and the document title at the same weight as the
+ * breadcrumb above them. chrome.css already tightens .doc-header__title; this is its
+ * pair on the list side, and the two have to match or the same collection has two
+ * different-looking names one click apart.
+ * --------------------------------------------------------------------------- */
+
+.list-header__title {
+  letter-spacing: var(--bdw-tracking-tight);
+}
+
+/* "Create New", beside that title, and the one action on the screen an editor came
+ * here to take. Payload renders it `buttonStyle="pill"`, the same neutral chip as
+ * "Bulk upload" and "Empty trash" - three equal-looking chips, none of them the
+ * obvious one. Branded so the list has a primary action, matching Save and Publish on
+ * the document side; the other two keep the neutral pill, which is the point.
+ *
+ * `.list-create-new-doc__create-new-button` is one class, exactly like
+ * `.btn--style-pill` in fields.css, so this wins on file order rather than on
+ * specificity - fields.css is imported before views.css (see app/(payload)/layout.tsx).
+ * Deliberate, and the reason it lives here rather than there: the list toolbar is this
+ * file's, and pairing it with .list-header__title keeps the two halves of the header
+ * together. The drawer's Create New is a different component
+ * (`.list-header__create-new-button`, a button wrapping a .pill) and stays neutral: in
+ * a drawer opened to pick an existing file, making a new one is not the main path. */
+.list-create-new-doc__create-new-button {
+  --bg-color: var(--bdw-brand);
+  --hover-bg: var(--bdw-brand-strong);
+  --color: var(--bdw-on-brand);
+  --hover-color: var(--bdw-on-brand);
+  --btn-border: 1px solid transparent;
+  --hover-btn-border: 1px solid transparent;
+  --btn-font-weight: var(--bdw-weight-semibold);
+  box-shadow: var(--bdw-shadow-xs);
+}
+
+/* ---------------------------------------------------------------------------
+ * The list toolbar
+ *
+ * .list-controls wraps the search bar, the Columns / Filters / Sort pills, and the
+ * three drop-down panels those pills open. Payload gives the wrapper nothing and the
+ * search bar an elevation-50 fill, so on the tinted canvas the toolbar was a grey
+ * slab with a bordered input floating in it: two frames around one control.
+ *
+ * Inverted here. The wrapper becomes the card, the search bar becomes transparent
+ * inside it, and the input keeps the single border fields.css gives every text
+ * control in the panel.
+ * --------------------------------------------------------------------------- */
+
+.list-controls {
+  padding: calc(var(--base) * 0.5);
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-l);
+  background: var(--bdw-surface);
+  box-shadow: var(--bdw-shadow-xs);
+}
+
+/* min-height is dropped along with the fill: Payload's 46px was sizing the grey slab,
+ * and the input inside sets its own height. Leaving it would pad the card. */
+.list-controls .search-bar {
+  background: transparent;
+  min-height: 0;
+}
+
+/* Payload sets the input transparent so the slab shows through it. With the slab gone
+ * the input needs its own fill, and it should be the same one every other input in the
+ * panel has. */
+.list-controls .search-filter__input {
+  background: var(--theme-input-bg);
+}
+
+/* The three panels the toolbar's pills open: Columns (.pill-selector), Filters
+ * (.where-builder), Sort (.sort-complex) and Group by (.group-by-builder). All four are
+ * flat elevation-50 by default, which inside a white card is nearly invisible. Sunken
+ * plus a hairline reads as a compartment of the toolbar rather than a second panel
+ * that happens to be next to it.
+ *
+ * Scoped to .list-controls: .pill-selector and .where-builder are also used inside
+ * list drawers, where they are the drawer's own content and not part of a card. */
+.list-controls .pill-selector,
+.list-controls .where-builder,
+.list-controls .sort-complex,
+.list-controls .group-by-builder {
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-m);
+  background: var(--bdw-surface-sunken);
+}
+
+/* The column toggles. Payload's own selected state is two stacked shadows with a
+ * hardcoded rgba, so it is the same shadow in both themes: correct on white, a grey
+ * halo on the dark theme's near-black. Tokens fix both at once, and the selected pill
+ * picks up the brand rather than only getting lighter. */
+.pill-selector__pill {
+  box-shadow: 0 0 0 1px var(--bdw-border);
+}
+
+.pill-selector__pill--selected {
+  background-color: var(--bdw-surface);
+  box-shadow:
+    0 0 0 1px var(--bdw-brand-soft),
+    var(--bdw-shadow-xs);
+  color: var(--bdw-brand-strong);
+}
+
+.pill-selector__pill--selected:hover {
+  background-color: var(--bdw-surface);
+  box-shadow:
+    0 0 0 1px var(--bdw-brand),
+    var(--bdw-shadow-sm);
+}
+
+/* "No filters set" and the version screen's empty state. Both are bare paragraphs. */
+.where-builder__no-filters,
+.versions__no-versions {
+  color: var(--bdw-text-muted);
+  font-size: var(--bdw-text-sm);
+}
+
+/* ---------------------------------------------------------------------------
+ * Table sorting
+ *
+ * The two arrows beside a column heading are 30% opaque until hovered, which on the
+ * uppercase grey header row is close to invisible - an editor cannot see that a column
+ * is sortable, and cannot see which column the list is currently sorted by. Colour
+ * carries both instead: muted for available, brand for active.
+ * --------------------------------------------------------------------------- */
+
+.sort-column__button {
+  opacity: 1;
+  color: var(--theme-elevation-350);
+  border-radius: var(--style-radius-s);
+  transition: color var(--bdw-fast) var(--bdw-ease);
+}
+
+.sort-column:hover .sort-column__button,
+.sort-column__button:hover {
+  opacity: 1;
+  color: var(--bdw-text-muted);
+}
+
+/* --active is on the button, not on the wrapper. */
+.sort-column__button.sort-column--active {
+  color: var(--bdw-brand);
+}
+
+.sort-column__button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+/* ---------------------------------------------------------------------------
+ * The pagination footer
+ *
+ * Payload leaves this as a bare row under the table: page buttons, a page count, and a
+ * per-page menu, all unenclosed. Given the table above it is a card, the row read as
+ * something that had fallen out of it. Same card, half the height.
+ * --------------------------------------------------------------------------- */
+
+.page-controls,
+.versions__page-controls {
+  margin-top: calc(var(--base) * 0.9);
+  padding: calc(var(--base) * 0.35) calc(var(--base) * 0.5);
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-l);
+  background: var(--bdw-surface);
+  box-shadow: var(--bdw-shadow-xs);
+}
+
+.page-controls__page-info,
+.versions__page-info {
+  font-size: var(--bdw-text-sm);
+  color: var(--bdw-text-muted);
+}
+
+.paginator__page {
+  color: var(--bdw-text-muted);
+  transition:
+    background-color var(--bdw-fast) var(--bdw-ease),
+    color var(--bdw-fast) var(--bdw-ease);
+}
+
+/* :not() rather than relying on order: a bare .paginator__page:hover is two
+ * compound-selector parts and would outrank .paginator__page--is-current, so hovering
+ * the page you are already on would un-highlight it. */
+.paginator__page:not(.paginator__page--is-current):hover {
+  background: var(--bdw-brand-softer);
+  color: var(--bdw-brand-strong);
+}
+
+.paginator__page--is-current {
+  background: var(--bdw-brand);
+  color: var(--bdw-on-brand);
+  font-weight: var(--bdw-weight-semibold);
+}
+
+.paginator__page:focus-visible,
+.clickable-arrow:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+.clickable-arrow {
+  border-radius: var(--style-radius-s);
+  transition: background-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.clickable-arrow:not(.clickable-arrow--is-disabled):hover {
+  background: var(--bdw-brand-softer);
+  color: var(--bdw-brand-strong);
+}
+
+/* The per-page menu's rows. Payload underlines them on hover, which inside a popup
+ * that already highlights the hovered row is two signals for one state. */
+.per-page__button:hover,
+.per-page__button:focus-visible {
+  color: var(--bdw-brand);
+  text-decoration: none;
+}
+
+.per-page__button-active {
+  color: var(--bdw-brand-strong);
+}
+
+/* The bulk-selection summary ("3 of 40 selected", then Select all). Its buttons are
+ * inline text buttons; they are actions, so they read as links. */
+.list-selection {
+  font-size: var(--bdw-text-sm);
+  color: var(--bdw-text-muted);
+}
+
+.list-selection__button {
+  color: var(--bdw-brand);
+  font-weight: var(--bdw-weight-semibold);
+}
+
+/* The heading above each group when a list is grouped by a field. */
+.group-by-header__heading {
+  font-size: var(--bdw-text-md);
+  font-weight: var(--bdw-weight-bold);
+  color: var(--bdw-text);
+}
+
+/* ---------------------------------------------------------------------------
+ * The document editor's right-hand rail
+ *
+ * surfaces.css makes the edit view's main column paper, on the reasoning that a
+ * document should look like a sheet of it. The sidebar was left on that same white,
+ * which made the status, dates and cover fields look like a continuation of the form
+ * rather than metadata about it - and the only thing separating them was the 1px
+ * border Payload draws on the main column's right edge.
+ *
+ * Canvas on the rail finishes the idea: paper on the left, page behind it on the
+ * right. No border is added here; the main column's own border-right is already the
+ * divider, and a second one would sit a pixel away from the first.
+ *
+ * Payload zeroes this element's width when the sidebar has no fields
+ * (`:has(... .render-fields:empty)`), so an unsidebarred collection gets no stray
+ * strip of canvas from this rule.
+ * --------------------------------------------------------------------------- */
+
+.document-fields__sidebar-wrap {
+  background-color: var(--bdw-canvas);
+}
+
+/* The rail only reads as a rail while it is beside the form. Payload stacks it under
+ * the form in two situations - `--force-sidebar-wrap` (live preview open) and every
+ * width at or below 1024px, handled in responsive.css - and a canvas-filled block
+ * across the bottom of a paper page reads as the page having run out. A rule instead. */
+.document-fields--force-sidebar-wrap .document-fields__sidebar-wrap {
+  background-color: transparent;
+  border-block-start: 1px solid var(--bdw-border);
+}
+
+.document-fields__label {
+  color: var(--bdw-text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * The document toolbar's metadata strip
+ *
+ * The id / created / last-modified list under the Save bar. Payload renders label and
+ * value at the same size and weight, so "Last Modified" and the date it is describing
+ * have equal claim on the eye. The label is the part you already know.
+ * --------------------------------------------------------------------------- */
+
+.doc-controls__label {
+  font-size: var(--bdw-text-2xs);
+  font-weight: var(--bdw-weight-bold);
+  letter-spacing: var(--bdw-tracking-caps);
+  text-transform: uppercase;
+  color: var(--bdw-text-muted);
+}
+
+.doc-controls__value {
+  font-size: var(--bdw-text-sm);
+  color: var(--bdw-text);
+}
+
+/* ---------------------------------------------------------------------------
+ * Versions
+ *
+ * Rarely visited and easy to leave looking like a debug screen, which is exactly why
+ * it is worth the six lines: it is the screen an editor lands on when something has
+ * gone wrong and they are trying to get a previous version back.
+ * --------------------------------------------------------------------------- */
+
+.versions__header {
+  align-items: baseline;
+  gap: calc(var(--base) * 0.5);
+}
+
+/* The version picker in the compare drop-down. Payload renders the label and the
+ * timestamp at the same size, so "Currently published" and the date it happened on
+ * have equal weight in a list where the date is the thing being chosen between. */
+.version-pill-label-text {
+  font-weight: var(--bdw-weight-semibold);
+  color: var(--bdw-text);
+}
+
+.version-pill-label-date {
+  font-size: var(--bdw-text-sm);
+  color: var(--bdw-text-muted);
+}
+
+/* The change tree.
+ *
+ * `.diff-collapser__toggle-button` is `all: unset`, which strips the focus outline
+ * along with everything else - so on a screen that is nothing but expandable rows, a
+ * keyboard user has no idea which row they are on. The radius matches the hover
+ * highlight Payload draws behind the button at `inset: -3px` with `z-index: -1`; the
+ * ring paints over that highlight rather than under it, because the button itself is
+ * `z-index: 1` and a box-shadow belongs to its own background layer. */
+.diff-collapser__toggle-button {
+  border-radius: var(--style-radius-s);
+}
+
+.diff-collapser__toggle-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+/* The per-field change count beside a field name. elevation-100 is the canvas colour
+ * (surfaces.css), and this screen renders on the canvas, so the badge was an
+ * invisible fill behind text one step lighter than its neighbours. A tinted pill
+ * matches the document counts in the sidebar and the status pills in the list.
+ *
+ * padding-inline only: Payload's shorthand sets the block padding too, and that part
+ * is right. */
+.diff-collapser__field-change-count {
+  padding-inline: calc(var(--base) * 0.32);
+  background: var(--bdw-brand-soft);
+  color: var(--bdw-brand-strong);
+  border-radius: var(--bdw-radius-pill);
+  font-size: var(--bdw-text-xs);
+  font-weight: var(--bdw-weight-semibold);
+}
+
+/* The gutter line down the side of a nested change: elevation-100 again, i.e. drawn
+ * in the colour of the surface it is drawn on.
+ *
+ * The colour alone, and on the logical side, because the width and style are declared
+ * twice - `border-left` under `[dir=ltr]`, `border-right` under `[dir=rtl]`. Setting
+ * `border-inline-start-color` lands on whichever side the matching rule used, and
+ * setting a physical side would leave the other direction untouched. The `:not()` is
+ * kept so the collapsed variant, which has no border at all, does not gain one. */
+.diff-collapser__content:not(.diff-collapser__content--hide-gutter) {
+  border-inline-start-color: var(--bdw-border);
+}
+
+/* Restore-this-version has no rules here, and the absence is the finding rather than
+ * an oversight.
+ *
+ * Payload 3.88 renders that dialog with its own ConfirmationModal: the DOM is
+ * `.payload__modal-item--slug-restore-version.confirmation-modal` wrapping a
+ * `.confirmation-modal__wrapper`, so it is already styled, in the floating-layers
+ * section of chrome.css, together with delete and leave-without-saving. Styling it
+ * twice would be two cards fighting over the same element.
+ *
+ * Worth stating because `.restore-version__modal`, `.restore-version__wrapper` and
+ * `.restore-version__chevron` are all still present in Payload's compiled
+ * stylesheet, which makes them look like live hooks. They are not: no JavaScript
+ * anywhere under node_modules/@payloadcms renders any of them, and only
+ * `.restore-version` itself (the button's wrapper) survives in the markup. The component was rebuilt on
+ * ConfirmationModal and its SCSS was left behind. Three rules were written against
+ * those three classes and styled nothing whatsoever — which is the failure this
+ * directory keeps warning about, one step further along than usual: the class names
+ * were real, they were checked against the compiled CSS, and the elements still never
+ * appear. Open the dialog and read the DOM. */
+
+/* ---------------------------------------------------------------------------
+ * The API tab
+ *
+ * The one remaining screen that still looked like a debug view rather than part of
+ * the panel, and the largest single instance of "the background separation is not
+ * right": `.query-inspector__results` is an elevation-50 fill with no border, no
+ * radius and `min-height: 100vh`, sitting on the elevation-100 canvas. On a chapter
+ * document that is an unbounded 12,000px slab of near-white, two points off the page
+ * behind it, with a scrollbar in the middle of nothing.
+ *
+ * It is worth the section even though editors rarely open it: it is the screen you
+ * end up on when a field is not appearing on the site and you need to see what the
+ * document actually contains.
+ * --------------------------------------------------------------------------- */
+
+.query-inspector__results {
+  /* Payload pads three sides and leaves this one at 0, which puts the deepest nested
+   * value hard against the edge of what is now a card. The other three are left
+   * alone: they are the tree's own alignment. */
+  padding-inline-end: calc(var(--base) * 0.5);
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-l);
+  background: var(--bdw-surface);
+  box-shadow: var(--bdw-shadow-xs);
+  /* min-height: 100vh is right in fullscreen, where hiding the configuration column
+   * is the whole feature and the results have to fill what is left. Everywhere else
+   * it means a Subject's forty-line payload renders as a viewport-tall card with an
+   * acre of white under it. */
+  min-height: 0;
+}
+
+.query-inspector--fullscreen .query-inspector__results {
+  min-height: 100vh;
+}
+
+/* JSON syntax colours. Payload's defaults are `--color-success-450` for strings and
+ * `--color-warning-450` for numbers, and tokens.css remaps the whole success ramp to
+ * the brand blue (that is how the accent is applied globally). So every string on
+ * this screen came out the same blue as the API URL above it, which is the one thing
+ * on the screen that IS a link. Repointed at the semantic tokens: green for strings,
+ * amber for numbers, the pairing every JSON viewer uses. */
+.query-inspector {
+  --string-color: var(--bdw-positive);
+  --number-color: var(--bdw-warning);
+}
+
+/* The expandable rows. They carry the same elevation-50 the results block had, which
+ * was invisible against it and would now band the card. Transparent, with the
+ * brand-tinted hover every other row-like control in the panel has. */
+.query-inspector__list-toggle {
+  background-color: transparent;
+  transition: background-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.query-inspector__list-toggle:hover {
+  background-color: var(--bdw-brand-softer);
+}
+
+/* `all: unset` again, so again no focus ring on the only interactive thing here. */
+.query-inspector__list-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bdw-brand-ring);
+}
+
+.query-inspector__list-toggle svg .stroke {
+  stroke: var(--bdw-text-muted);
+}
+
+/* The dashed guide line between a parent row and its children: elevation-200 on
+ * white. Logical side, for the same reason as the diff gutter above. */
+.query-inspector__json-children:before {
+  border-inline-start-color: var(--bdw-border);
+}
+
+/* The fullscreen toggle, which was elevation-300 on elevation-0: grey on white,
+ * measured at rgb(200,203,210), and effectively invisible until hovered. It is the
+ * only control on the screen, so it gets a border and reads as a button. */
+.query-inspector__toggle-fullscreen-button {
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-s);
+  background-color: var(--bdw-surface);
+  color: var(--bdw-text-muted);
+  transition:
+    color var(--bdw-fast) var(--bdw-ease),
+    border-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.query-inspector__toggle-fullscreen-button:hover {
+  color: var(--bdw-brand);
+  border-color: var(--bdw-brand);
+}
+
+.query-inspector__toggle-fullscreen-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+/* "API URL" and the field labels in the configuration column, rendered at body size
+ * in elevation-400: the same size as the value underneath and lighter than it.
+ *
+ * No caps or tracking here, unlike .doc-controls__label above. These strings come
+ * from Payload's i18n, and tracked capitals on Bengali break conjuncts apart and
+ * interrupt the matra headstroke - which is a live risk on a panel whose editors read
+ * Bengali, even though the admin chrome is English today. */
+.query-inspector__label {
+  font-size: var(--bdw-text-sm);
+  font-weight: var(--bdw-weight-semibold);
+  color: var(--bdw-text-muted);
+}
+
+/* The URL is a real link to the REST endpoint and the only navigable thing in the
+ * column, so it is coloured like one. Payload leaves it at body colour with an
+ * underline on hover, which is indistinguishable from the labels around it. */
+.query-inspector__api-url a {
+  color: var(--bdw-brand);
+}
+
+/* ---------------------------------------------------------------------------
+ * The account screen
+ *
+ * /admin/account is a Users document, so it already inherits the document editor's
+ * paper column from surfaces.css and its fields from fields.css. Two things on it are
+ * not fields, and both were left as flat grey.
+ * --------------------------------------------------------------------------- */
+
+/* The email / change-password block. elevation-50 with square corners on white paper
+ * is a rectangle eight points off its background - the exact case the AGENTS.md note
+ * on --bdw-surface-raised describes. Sunken is the token for a tile inside a white
+ * block, and it needs the hairline to be a compartment rather than a smudge.
+ *
+ * Payload's intended radius is on `.collection-edit__auth`, the parent, which has no
+ * `overflow: hidden` - so it never clipped this fill and the corners stayed square.
+ * Setting the radius here is what actually rounds it.
+ *
+ * NOT padding. Payload declares that twice, once per breakpoint, and one flat
+ * unlayered value would beat both - including the smaller mobile one. Same trap as
+ * --gutter-h, described in tokens.css. */
+.auth-fields {
+  background: var(--bdw-surface-sunken);
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-m);
+}
+
+/* The two rules above and below the language / theme block, drawn in elevation-100 -
+ * the canvas colour, on paper. They are the only thing separating the panel's own
+ * settings from the user's fields, so they have to be visible. */
+.payload-settings:before,
+.payload-settings:after {
+  background: var(--bdw-border);
+}
+
+/* ---------------------------------------------------------------------------
+ * The standalone screens
+ *
+ * The not-found screen: a heading, a sentence and a button dropped straight onto the
+ * canvas. On a tinted canvas that is visibly unfinished, and it is the screen most
+ * likely to be someone's first impression of the panel after a stale bookmark.
+ *
+ * Only this one gets a card. The unauthorized screen renders into `.gutter` with no
+ * wrapper element of its own (`.unauthorized--with-gutter` is the gutter, and
+ * `.unauthorized__button` the button), so there is nothing to card without adding
+ * markup. `.logout__wrap` renders inside `.template-minimal__wrap`, which surfaces.css
+ * already makes a card, so carding it again would nest two.
+ * --------------------------------------------------------------------------- */
+
+.not-found__wrap {
+  padding: calc(var(--base) * 1.25);
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-l);
+  background: var(--bdw-surface);
+  box-shadow: var(--bdw-shadow-sm);
+}
+
+.not-found__content {
+  color: var(--bdw-text-muted);
+}

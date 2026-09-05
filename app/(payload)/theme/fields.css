@@ -1,0 +1,738 @@
+/* Boidwip admin — controls and fields.
+ *
+ * Buttons, inputs, selects, checkboxes, the Lexical editor and the container
+ * fields (arrays, groups, tabs, collapsibles). The shell is in chrome.css.
+ *
+ * THE ONE TRAP IN THIS FILE
+ *
+ * Because these rules are unlayered they beat Payload's *state* rules too, not
+ * only its base ones. Payload styles an invalid field as
+ * `html[data-theme=light] .rich-text-lexical.error > .rich-text-lexical__wrap`
+ * — a red border and tint, inside @layer payload-default. An unlayered
+ * `.rich-text-lexical__wrap { border: 1px solid var(--bdw-border) }` would win
+ * against that and leave a required-but-empty rich text field looking perfectly
+ * fine while refusing to save.
+ *
+ * So every rule below that sets `border`, `background` or `background-color` on
+ * something that has an error state is written with `:not(.error)` or
+ * `:not(.field-type--has-error)`. That is not defensive style, it is the
+ * difference between a themed panel and a panel whose validation is invisible.
+ * When adding a rule here, grep the compiled Payload CSS for the selector first
+ * and check whether an error variant exists. */
+
+/* ---------------------------------------------------------------------------
+ * Buttons
+ *
+ * Payload's primary button is --theme-elevation-800, i.e. near-black. That is a
+ * deliberate neutral default, and it is the single most recognisable thing about
+ * an unbranded Payload install: Save and Publish are the two controls an editor
+ * looks at all day.
+ *
+ * The variables (--bg-color, --hover-bg, --color) are Payload's own contract —
+ * the base .btn rule reads them for background-color and color — so setting them
+ * rather than the properties keeps every button variant, size and disabled state
+ * working without restating any of it.
+ * --------------------------------------------------------------------------- */
+
+.btn {
+  --btn-font-weight: var(--bdw-weight-medium);
+  letter-spacing: var(--bdw-tracking-normal);
+}
+
+.btn--style-primary {
+  --bg-color: var(--bdw-brand);
+  --hover-bg: var(--bdw-brand-strong);
+  --color: var(--bdw-on-brand);
+  --hover-color: var(--bdw-on-brand);
+  --btn-font-weight: var(--bdw-weight-semibold);
+  box-shadow: var(--bdw-shadow-xs);
+}
+
+/* Payload's disabled primary is a grey fill with dark text, which reads as a
+ * secondary button rather than as a dead one. A tinted, translucent brand keeps
+ * the shape recognisable while making it obviously inert. */
+.btn--style-primary.btn--disabled {
+  --bg-color: var(--theme-elevation-150);
+  --color: var(--theme-elevation-450);
+  --hover-bg: var(--theme-elevation-150);
+  --hover-color: var(--theme-elevation-450);
+  box-shadow: none;
+}
+
+.btn--style-secondary {
+  --btn-border: 1px solid var(--bdw-border-strong);
+  --color: var(--bdw-text);
+  --hover-color: var(--bdw-brand);
+  --hover-bg: var(--bdw-brand-softer);
+  --hover-btn-border: 1px solid var(--bdw-brand);
+}
+
+/* The pill is Payload's chip-shaped secondary button, and it is used in more places
+ * than its name suggests: the list view's "Create New", "Bulk upload" and "Empty
+ * trash", the upload field's "Create New" / "Choose from existing" togglers, and
+ * "Edit image" / "Preview sizes" on a file panel.
+ *
+ * Payload fills it with elevation-100 and gives it no border, and that is a fill this
+ * theme cannot use anywhere: --bdw-canvas IS --color-base-100, and --bdw-surface-sunken
+ * IS --theme-elevation-100, so the pill is exactly the colour of both the page
+ * background and of every sunken tile. On the Chapters list that made the primary
+ * action of the busiest screen in the panel a piece of grey text with no button around
+ * it at all, measured identical to the canvas behind it: rgb(244,245,248) on
+ * rgb(244,245,248), border transparent.
+ *
+ * Paper plus a hairline instead, which is the one combination that reads as a control
+ * on all four fills this theme uses - canvas, paper, raised and sunken - because it
+ * differs from each of them in either fill or outline. Same hover as
+ * .btn--style-secondary above, since the two are the same kind of button in different
+ * clothes. */
+.btn--style-pill {
+  --bg-color: var(--bdw-surface);
+  --hover-bg: var(--bdw-brand-softer);
+  --color: var(--bdw-text);
+  --hover-color: var(--bdw-brand);
+  --btn-border: 1px solid var(--bdw-border);
+  --hover-btn-border: 1px solid var(--bdw-brand);
+  border-radius: var(--bdw-radius-pill);
+}
+
+.btn--style-subtle {
+  --btn-border: 1px solid var(--bdw-border);
+  --hover-btn-border: 1px solid var(--bdw-border-strong);
+}
+
+/* Payload hardcodes 4px here rather than reading --style-radius-s, so the popup
+ * half of a split button keeps square-ish corners while the main half follows
+ * the token. Restated so the two halves match. */
+.btn--withPopup .popup-button {
+  border-radius: var(--style-radius-s);
+}
+
+/* A visible, branded focus ring on interactive controls. Payload's global
+ * :focus-visible outline is a solid 2px in the text colour, which is high
+ * contrast but sits hard against the new radii. The ring is drawn with
+ * box-shadow so it follows border-radius; the transparent outline underneath is
+ * kept because box-shadow is invisible in forced-colors mode. */
+.btn:focus-visible,
+.pill:focus-visible,
+.popup-button:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+/* ---------------------------------------------------------------------------
+ * Text inputs
+ *
+ * Payload applies one SCSS mixin (formInput) to a fixed list of selectors rather
+ * than to `input` — there is no single base rule to override. The list below is
+ * that list, taken from the compiled CSS, so every text-like control in the
+ * panel changes together. Miss one and it keeps a 3px radius and a grey border
+ * while everything around it does not, which is more obviously wrong than the
+ * original.
+ * --------------------------------------------------------------------------- */
+
+.field-type.text:not(.has-many) input,
+.field-type.number:not(.has-many) input,
+.field-type.email input,
+.field-type.password input,
+.field-type.confirm-password input,
+.auth-fields .field-type.api-key input,
+.auth-fields .api-key__toggle-button,
+.field-type.textarea textarea,
+.date-time-picker .react-datepicker__input-container input,
+.point input,
+.edit-upload__input input,
+.file-field__filename,
+.file-field__remote-file,
+.search-filter__input,
+.item-search__input,
+.block-search__input,
+.toolbar-input {
+  border-radius: var(--style-radius-m);
+  border: 1px solid var(--bdw-border);
+  /* Payload's default is `0 2px 2px -1px rgba(0,0,0,.2)` growing on hover: a
+   * drop shadow on an inset control, which is what makes the default form look
+   * dated. Replaced with a hairline inset that reads as depth without
+   * pretending the input floats above the page. */
+  box-shadow: var(--bdw-shadow-inset);
+  transition:
+    border-color var(--bdw-fast) var(--bdw-ease),
+    box-shadow var(--bdw-fast) var(--bdw-ease);
+}
+
+.field-type.text:not(.has-many) input:hover,
+.field-type.number:not(.has-many) input:hover,
+.field-type.email input:hover,
+.field-type.password input:hover,
+.field-type.confirm-password input:hover,
+.field-type.textarea textarea:hover,
+.date-time-picker .react-datepicker__input-container input:hover,
+.search-filter__input:hover,
+.item-search__input:hover {
+  border-color: var(--bdw-border-strong);
+  box-shadow: var(--bdw-shadow-inset);
+}
+
+/* The focused field is the one thing on the screen the editor is working in, so
+ * it gets the brand ring rather than Payload's slightly-darker-grey border. */
+.field-type.text:not(.has-many) input:focus,
+.field-type.number:not(.has-many) input:focus,
+.field-type.email input:focus,
+.field-type.password input:focus,
+.field-type.confirm-password input:focus,
+.field-type.textarea textarea:focus,
+.date-time-picker .react-datepicker__input-container input:focus,
+.search-filter__input:focus,
+.item-search__input:focus,
+.block-search__input:focus {
+  border-color: var(--bdw-brand);
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+  outline: 0;
+}
+
+.field-type.textarea textarea {
+  line-height: var(--bdw-leading-relaxed);
+  padding-block: calc(var(--base) * 0.5);
+}
+
+/* ---------------------------------------------------------------------------
+ * Labels, help text, errors
+ *
+ * AGENTS.md requires field documentation to live in `admin.description` on the
+ * field, which means this project leans on .field-description more than a
+ * default Payload install does. It is worth making readable: Payload renders it
+ * at the same size as the input's own text, so a two-line description competes
+ * with the value.
+ * --------------------------------------------------------------------------- */
+
+.field-label {
+  font-weight: var(--bdw-weight-semibold);
+  font-size: var(--bdw-text-md);
+  letter-spacing: var(--bdw-tracking-normal);
+  color: var(--bdw-text);
+}
+
+.field-label .required {
+  color: var(--bdw-danger);
+}
+
+.field-description {
+  font-size: var(--bdw-text-sm);
+  line-height: var(--bdw-leading-normal);
+  color: var(--bdw-text-muted);
+  /* The descriptions in collections/*.ts are full sentences, several of them
+   * two lines long. Without a bound they run the full width of the editor
+   * column and read as body copy rather than as help text. */
+  max-width: 68ch;
+}
+
+.field-error {
+  color: var(--bdw-danger);
+  font-weight: var(--bdw-weight-medium);
+}
+
+.error-pill {
+  background: var(--bdw-danger-soft);
+  color: var(--bdw-danger);
+  border-radius: var(--bdw-radius-pill);
+  font-weight: var(--bdw-weight-semibold);
+}
+
+/* ---------------------------------------------------------------------------
+ * Selects (react-select) — the subject relationship and question-type fields
+ *
+ * .react-select--error is Payload's invalid state, hence the :not() on the
+ * control. Its selector is `.react-select--error div.rs__control`, so it wins on
+ * specificity within its own layer but not against an unlayered rule.
+ * --------------------------------------------------------------------------- */
+
+.react-select:not(.react-select--error) .rs__control {
+  border-radius: var(--style-radius-m);
+  border: 1px solid var(--bdw-border);
+  box-shadow: var(--bdw-shadow-inset);
+  transition:
+    border-color var(--bdw-fast) var(--bdw-ease),
+    box-shadow var(--bdw-fast) var(--bdw-ease);
+}
+
+.react-select:not(.react-select--error) .rs__control:hover {
+  border-color: var(--bdw-border-strong);
+}
+
+.react-select:not(.react-select--error) .rs__control--is-focused,
+.react-select:not(.react-select--error) .rs__control--menu-is-open {
+  border-color: var(--bdw-brand);
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+/* Payload gives the menu square corners and an upward shadow, which was
+ * consistent with the old 3px radius and is not with a 10px one. */
+.react-select .rs__menu {
+  border-radius: var(--style-radius-m);
+  border: 1px solid var(--bdw-border);
+  box-shadow: var(--bdw-shadow-md);
+  overflow: hidden;
+}
+
+.react-select .rs__option {
+  border-radius: var(--style-radius-s);
+  transition: background-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.react-select .rs__option--is-focused {
+  background: var(--bdw-brand-softer);
+}
+
+.react-select .rs__option--is-selected {
+  background: var(--bdw-brand-soft);
+  color: var(--bdw-brand);
+  font-weight: var(--bdw-weight-semibold);
+}
+
+.react-select .rs__multi-value {
+  border-radius: var(--bdw-radius-pill);
+  background: var(--bdw-brand-soft);
+  color: var(--bdw-brand);
+}
+
+/* ---------------------------------------------------------------------------
+ * Checkboxes and radios
+ *
+ * The error selectors here are theme-qualified —
+ * `html[data-theme=light] .checkbox.error .checkbox-input__input` — so the
+ * :not(.error) guard goes on the .checkbox ancestor, not on the input.
+ * --------------------------------------------------------------------------- */
+
+.checkbox:not(.error) .checkbox-input__input {
+  border-radius: var(--style-radius-s);
+  border: 1px solid var(--bdw-border-strong);
+  box-shadow: none;
+  transition:
+    background-color var(--bdw-fast) var(--bdw-ease),
+    border-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.checkbox-input--checked .checkbox-input__input {
+  background: var(--bdw-brand);
+  border-color: var(--bdw-brand);
+}
+
+.checkbox-input__icon .stroke,
+.checkbox-input__icon .fill {
+  stroke: var(--bdw-on-brand);
+}
+
+.radio-input--is-selected .radio-input__styled-radio {
+  border-color: var(--bdw-brand);
+  box-shadow: inset 0 0 0 4px var(--bdw-brand);
+  background: var(--bdw-surface);
+}
+
+/* ---------------------------------------------------------------------------
+ * Container fields: collapsibles, arrays, groups, tabs
+ *
+ * The FAQ field on Chapters is an array of collapsible rows and is where an
+ * editor spends the most time after the body, so it is worth more than the
+ * default hairline. Each row becomes a card; the whole array does not, because
+ * a card of cards adds a frame that carries no information.
+ * --------------------------------------------------------------------------- */
+
+.collapsible--style-default > .collapsible__toggle-wrap {
+  background: var(--bdw-surface-raised);
+  border-radius: var(--style-radius-m) var(--style-radius-m) 0 0;
+  border: 1px solid var(--bdw-border);
+  border-block-end: 0;
+  transition: background-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.collapsible--style-default.collapsible--collapsed > .collapsible__toggle-wrap {
+  border-radius: var(--style-radius-m);
+  border-block-end: 1px solid var(--bdw-border);
+}
+
+.collapsible--style-default > .collapsible__toggle-wrap:hover {
+  background: var(--theme-elevation-100);
+}
+
+.collapsible--style-default > .collapsible__content {
+  border: 1px solid var(--bdw-border);
+  border-block-start: 0;
+  border-radius: 0 0 var(--style-radius-m) var(--style-radius-m);
+  background: var(--bdw-surface);
+  padding: calc(var(--base) * 0.9);
+}
+
+/* Payload's error variant tints the toggle row red. Left to it, but the border
+ * has to be re-stated or the row above gets a red fill inside a grey frame. */
+.collapsible--style-error > .collapsible__toggle-wrap {
+  border-color: var(--bdw-danger);
+}
+
+.array-field__add-row .btn,
+.blocks-field__drawer-toggler {
+  border-radius: var(--style-radius-m);
+}
+
+.array-field__title,
+.group-field__title,
+.section-title {
+  font-weight: var(--bdw-weight-semibold);
+  letter-spacing: var(--bdw-tracking-snug);
+}
+
+.tabs-field__tab-button {
+  border-radius: var(--style-radius-s) var(--style-radius-s) 0 0;
+  color: var(--theme-elevation-500);
+  transition:
+    color var(--bdw-fast) var(--bdw-ease),
+    box-shadow var(--bdw-fast) var(--bdw-ease);
+}
+
+.tabs-field__tab-button--active {
+  color: var(--bdw-brand);
+  font-weight: var(--bdw-weight-semibold);
+  box-shadow: inset 0 -2px 0 0 var(--bdw-brand);
+}
+
+.tabs-field__tab-button--has-error {
+  color: var(--bdw-danger);
+  box-shadow: inset 0 -2px 0 0 var(--bdw-danger);
+}
+
+/* ---------------------------------------------------------------------------
+ * Uploads
+ *
+ * The cover image and PDF fields on Chapters. A dashed target that changes
+ * colour on drag-over is the convention every editor already knows.
+ *
+ * The real markup (verified against @payloadcms/ui Upload/index.scss + index.js):
+ *   .file-field                       — the container, Payload fills it elevation-50
+ *     .file-field__upload             — flex wrapper
+ *       .dropzone.dropzoneStyle--default   — the actual drag/drop target
+ *         .file-field__dropzoneContent
+ *           .file-field__dropzoneButtons   — "Create new" / "Choose from existing" pills
+ *             .file-field__orText          — the "or" between them
+ *           .file-field__dragAndDropText   — "Drag and drop a file"
+ * The frame is put on `.dropzone` itself, not on `.file-field__upload`, so the
+ * drag-over state (`.dropzone.dragging`) lights up the same box the pointer is
+ * over. `.file-field`'s own elevation-50 fill is dropped so there is one card,
+ * not a raised rectangle wrapping a dashed one.
+ *
+ * (`.file-field__dropzone` and `.upload__dropzone` were the selectors here
+ * before and neither exists in Payload's markup — the same dead-class trap the
+ * theme header warns about, which is why the empty control looked unstyled.)
+ * --------------------------------------------------------------------------- */
+
+.file-field {
+  background: transparent;
+}
+
+.file-field .dropzone {
+  padding: calc(var(--base) * 1.4);
+  border: 1px dashed var(--bdw-border-strong);
+  border-radius: var(--style-radius-m);
+  background: var(--bdw-surface-sunken);
+  transition:
+    border-color var(--bdw-fast) var(--bdw-ease),
+    background-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.file-field .dropzone:hover,
+.file-field .dropzone.dragging {
+  border-color: var(--bdw-brand);
+  background: var(--bdw-brand-softer);
+}
+
+.file-field__dropzoneContent {
+  align-items: center;
+  gap: calc(var(--base) * 0.6);
+}
+
+.file-field__dropzoneButtons {
+  gap: calc(var(--base) * 0.5);
+}
+
+/* Two selectors, not the four this used to have. `.file-field__preview` and
+ * `.thumbnail-card__thumbnail` are both in Payload's compiled stylesheet and neither
+ * appears in its markup - see the note where the upload grid used to be, at the end of
+ * this section. */
+.thumbnail,
+.upload-field-card {
+  border-radius: var(--style-radius-m);
+  overflow: hidden;
+}
+
+.upload-relationship-details {
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-m);
+  background: var(--bdw-surface-raised);
+}
+
+/* Payload lowercases both of the dropzone's helper strings ("Drag and drop a file",
+ * and the "or" between the two buttons) and renders them at elevation-500. Nothing
+ * else in the panel lowercases translated text (a no-op on Bengali but arbitrary on
+ * a Latin string that begins with a proper noun), so restore the natural case and
+ * use the muted token. Real classes are `.file-field__*`, not `.upload__*`. */
+.file-field__dragAndDropText,
+.file-field__orText {
+  text-transform: none;
+  color: var(--bdw-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+ * The file panel, once something is uploaded
+ *
+ * .file-details is the block under an upload field showing the thumbnail, filename,
+ * dimensions and the generated sizes. It appears on every Media document and on the
+ * cover-image field of every chapter, so it is the most-seen piece of the uploads UI
+ * and it arrived with three separate defects.
+ *
+ * Its border is already --theme-border-color, which resolves to --theme-elevation-150,
+ * which is exactly --bdw-border - so the border is correct as shipped and is not
+ * restated here. What is wrong is the fill and the shadows.
+ * -------------------------------------------------------------------------- */
+
+.file-details {
+  /* elevation-50 (raised) on the paper of a document editor is a rectangle eight
+   * points off its background. Sunken is the token for a tile inside a white block. */
+  background: var(--bdw-surface-sunken);
+  /* Payload's is a hardcoded `0 2px 2px -1px #0000001a`: one value for both themes,
+   * so a soft drop shadow on white and a grey halo on the dark theme's near-black. */
+  box-shadow: var(--bdw-shadow-xs);
+}
+
+/* The panel is not clickable, and Payload deepens its shadow on hover anyway - so
+ * moving the pointer across a document made a static block of metadata rise. Held at
+ * the resting value rather than removed, so the declaration still says what it means. */
+.file-details:not(:disabled):hover {
+  box-shadow: var(--bdw-shadow-xs);
+}
+
+/* Same hardcoded shadow on the remove button's icon. Its hover is a grey border, which
+ * says nothing about what the button does; this is the control that detaches the file
+ * from the document, so it says so. */
+.file-details__remove .btn__icon {
+  box-shadow: var(--bdw-shadow-xs);
+}
+
+.file-details__remove .btn__icon:hover {
+  border-color: var(--bdw-danger);
+  color: var(--bdw-danger);
+}
+
+/* "Edit image" and "Preview sizes" have no rule here, and the absence is worth a note
+ * because a pair of them was written and had to be thrown away.
+ *
+ * They were styled as `.file-details__edit`, which is a class Payload's compiled CSS
+ * still ships and its markup no longer produces - the same trap as the restore-version
+ * dialog, documented in the versions section of views.css. What actually renders is
+ * .file-field__edit and .file-field__previewSizes, both .btn--style-pill, and the fix
+ * belongs in that one rule in the buttons section above rather than here: Payload's
+ * pill fill is elevation-100, which is byte-for-byte the sunken fill this panel takes,
+ * so both buttons were unbordered text on an identical background. Every other pill in
+ * the panel had the same problem against the canvas. */
+
+/* The "jpg - 118 KB" line under the filename. Payload renders it at the same 14px
+ * and the same --bdw-text as the filename above it, differing only in weight, so
+ * the metadata competes with the name of the thing it describes.
+ *
+ * `.file-details__size-label` was the class here before, and is another that exists
+ * in Payload's stylesheet but not in its markup. */
+.file-meta__size-type {
+  font-size: var(--bdw-text-sm);
+  color: var(--bdw-text-muted);
+}
+
+/* The filename is also the link that opens the file in a new tab. Payload gives it
+ * no link styling at all, which is right at rest - it is the panel's heading first,
+ * and colouring it brand would make the heading look like a call to action - but it
+ * leaves nothing to say it is clickable. Hover is where that belongs. */
+.file-meta__url a {
+  transition: color var(--bdw-fast) var(--bdw-ease);
+}
+
+.file-meta__url a:hover {
+  color: var(--bdw-brand);
+  text-decoration: underline;
+}
+
+/* --------------------------------------------------------------------------
+ * The upload grid, which does not exist
+ *
+ * Three rules used to sit here, on `.thumbnail-card`, `.thumbnail-card--has-on-click`
+ * and its focus state, described as "a tile in the Media list's grid view and in the
+ * upload drawer". Neither of those is where it comes from, and in this project it comes
+ * from nowhere at all.
+ *
+ * Exactly two components under node_modules/@payloadcms import a ThumbnailCard:
+ * `fields/Blocks/BlockSelector`, the drawer that offers the available block types, and
+ * `elements/ItemsDrawer`, whose only caller is
+ * `views/Dashboard/Default/ModularDashboard` - the default dashboard, which this
+ * project replaces with its own view. There is no `type: "blocks"` field in any
+ * collection and no BlocksFeature in lib/payload/editor.ts, so the block selector has
+ * nothing to open for.
+ *
+ * The upload field's "Choose from existing" was the last candidate and is the one that
+ * is easy to assume: it opens a ListDrawer, which renders the collection's ordinary
+ * list. Verified by opening it on a chapter and counting - the drawer is a `.table`
+ * with `.thumbnail--size-small` cells in it, and `.thumbnail-card` is not present
+ * anywhere in the document. The radius those thumbnails need comes from `.thumbnail` at
+ * the top of this section.
+ *
+ * Left as a note rather than as rules against a maybe. If a blocks field is ever added,
+ * this is the block to write, and .card in chrome.css is the object to match: a
+ * thumbnail card is the same bordered tile that navigates on click.
+ * -------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------------
+ * The Lexical editor
+ *
+ * NOT COSMETIC: Payload sets the editor surface to var(--font-serif), a stack of
+ * Georgia / Bitstream Charter / Charis SIL / Utopia / URW Bookman L. Not one of
+ * those has Bengali coverage, and every chapter on this site is Bengali. So the
+ * editor currently renders the content in whatever the browser picks as a
+ * last-resort serif fallback, which differs by machine and does not match the
+ * published page. Pointing it at --font-body puts it on the same Bengali-capable
+ * stack as the rest of the panel (see tokens.css).
+ *
+ * NOT COSMETIC: the frame below has to clip WITHOUT scrolling, or it breaks the
+ * toolbar. See the overflow note on .rich-text-lexical__wrap.
+ *
+ * COSMETIC: the editor has no frame in the default theme — the toolbar has a
+ * border but the writing surface below it does not, so the body field has no
+ * visible extent. Framing the two together makes the largest field on the
+ * Chapters form look like a field.
+ *
+ * WHAT NOT TO TOUCH HERE: Payload's `padding-top: calc(var(--base) * 1.25)` on
+ * the writing surface. Three of its rules measure from that one number — the
+ * surface's padding, the placeholder's offset, and the start of the gutter
+ * hairline — and the gutter one is `!important` inside `@layer payload-default`,
+ * which unlayered CSS cannot outrank at any specificity (see the correction in
+ * tokens.css: unlayered beats layered for NORMAL declarations, and loses to it
+ * for `!important` ones). Override the padding alone and the caret, the
+ * placeholder and the hairline stop agreeing. The gap above the first line is
+ * trimmed on .editor-container instead, where nothing else is anchored.
+ * --------------------------------------------------------------------------- */
+
+.rich-text-lexical:not(.error) > .rich-text-lexical__wrap {
+  border: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-input-bg);
+  /* `clip`, NOT `hidden`. Both clip the toolbar's square corners to the radius
+   * identically, but `hidden` also makes this box a scroll container — and
+   * Payload's .fixed-toolbar is `position: sticky` with `top:
+   * var(--doc-controls-height)`, an offset meant to resolve against the PAGE so
+   * the toolbar parks under the document control bar while you scroll a long
+   * chapter. Re-anchored to this box, that offset had nothing to scroll and just
+   * painted the toolbar 48px below its own flow box: a blank band at the top of
+   * every rich-text field in the panel, then a translucent toolbar sitting over
+   * the first lines of text. `clip` creates no scroll container, so the offset
+   * resolves against the page again. Measured on /admin/collections/books/6:
+   * toolbar-over-text overlap 48px -> 0px, nothing else moved. */
+  overflow: clip;
+  transition: border-color var(--bdw-fast) var(--bdw-ease);
+}
+
+.rich-text-lexical:not(.error) > .rich-text-lexical__wrap:focus-within {
+  border-color: var(--bdw-brand);
+  box-shadow: 0 0 0 3px var(--bdw-brand-ring);
+}
+
+/* Payload already pads the writing surface 25px at the top (its clearance for a
+ * fixed toolbar) and 8px at the bottom, so the container's own symmetric 10px
+ * lands 35px above the first line and 18px below it. Drop the top half: 25/18 is
+ * an even-looking field, and the 10px was the part of the gap above the text that
+ * could be removed without moving Payload's placeholder and gutter with it. */
+.editor-container {
+  font-family: var(--font-body);
+  font-size: var(--bdw-text-lg);
+  line-height: var(--bdw-leading-relaxed);
+  letter-spacing: normal;
+  padding: 0 calc(var(--base) * 0.75) calc(var(--base) * 0.5);
+}
+
+/* An empty rich-text field had no height of its own, so a Synopsis field before
+ * anyone typed in it was a one-line box the same size as the Title input above
+ * it. The floor goes on the contenteditable rather than the frame so that a click
+ * anywhere in the blank area still lands the caret; three lines is enough to read
+ * as prose, and every one of these fields grows past it on the first paragraph. */
+.rich-text-lexical .ContentEditable__root {
+  min-height: calc(var(--base) * 4);
+}
+
+/* Payload renders the field description INSIDE .rich-text-lexical__wrap, as a
+ * sibling of the editor rather than after it, so the frame above encloses it. On
+ * a text field the same help text sits outside the input's border; here it landed
+ * on the writing surface, in the writing colour, reading as the first thing
+ * already typed into the synopsis. Banding it off keeps it where the markup puts
+ * it and still makes it unmistakably chrome. */
+.rich-text-lexical > .rich-text-lexical__wrap > .field-description {
+  padding: calc(var(--base) * 0.4) calc(var(--base) * 0.75);
+  border-block-start: 1px solid var(--bdw-border);
+  background: var(--bdw-surface-sunken);
+  /* The 68ch bound from the base rule would stop the band's background short of
+   * the frame's right edge, since it bounds the block and not just the text. */
+  max-width: none;
+}
+
+/* The toolbar keeps Payload's sticky behaviour and its layout; only its edges and
+ * its resting offset change here, so it sits flush inside the new frame instead
+ * of drawing a second box one pixel inside the first. Payload's translateY(1px)
+ * exists to collapse its border against the editor below, which is no longer
+ * where the border is.
+ *
+ * The `top` is Payload's --doc-controls-height (48px) plus the 8px that bar
+ * actually overruns it by: .doc-controls__wrapper is 48px tall, but the content
+ * inside it is 16px + a 24px line + 16px = 56px and simply overflows, so the
+ * stuck bar is 56px and the toolbar parked 8px underneath its own z-index 5.
+ * Re-derive from .doc-controls__content if a Payload upgrade repads that bar. */
+.fixed-toolbar {
+  border: 0;
+  border-block-end: 1px solid var(--bdw-border);
+  border-radius: var(--style-radius-m) var(--style-radius-m) 0 0;
+  transform: none;
+  top: calc(var(--base) * 2.8);
+}
+
+/* Payload paints the toolbar's backdrop as a 75%-opaque ::before plus a blurred
+ * ::after. Frosted glass is fine over a photo; over Bengali prose in a framed
+ * field the descenders of the line underneath show through the buttons while the
+ * toolbar is parked. Opaque, and drop the blur layer with it — it was blurring a
+ * flat fill, which costs a compositing layer and renders identically. */
+.fixed-toolbar::before {
+  background: var(--bdw-surface-raised);
+  opacity: 1;
+}
+
+.fixed-toolbar::after {
+  backdrop-filter: none;
+}
+
+.toolbar-popup__button {
+  border-radius: var(--style-radius-s);
+}
+
+.toolbar-popup__button.active {
+  background-color: var(--bdw-brand-soft);
+  color: var(--bdw-brand);
+}
+
+.toolbar-popup__button.active:hover:not(.disabled) {
+  background-color: var(--bdw-brand-soft);
+}
+
+.toolbar-popup__dropdown-items {
+  border-radius: var(--style-radius-m);
+  border: 1px solid var(--bdw-border);
+  box-shadow: var(--bdw-shadow-md);
+  overflow: hidden;
+}
+
+.toolbar-popup__dropdown-item {
+  border-radius: var(--style-radius-s);
+}
+
+.toolbar-popup__dropdown-item:hover {
+  background: var(--bdw-brand-softer);
+  color: var(--bdw-brand);
+}

@@ -1,0 +1,19 @@
+/* The brand tile.
+ *
+ * One property, and deliberately only one: `display: block` stops the
+ * inline-element baseline gap from adding a few phantom pixels under the tile
+ * inside a flex row, and that is true wherever the mark is used.
+ *
+ * SIZE IS NOT SET HERE, ON PURPOSE.
+ *
+ * Icon.tsx wants "fill the container" (Payload puts it in a 16px box and its own
+ * PayloadIcon is height/width 100%); Logo.tsx wants a fixed 46px. If this file
+ * set either one, the consumer's class and this class would both be a single
+ * unlayered class selector setting the same property on the same <svg>, so the
+ * winner would be decided by which CSS module the bundler happened to emit last
+ * — a function of the import graph, not of anything visible in these files. Two
+ * stylesheets, two disjoint sets of properties, no order dependency. */
+
+.mark {
+  display: block;
+}

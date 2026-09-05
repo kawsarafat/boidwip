@@ -1,0 +1,98 @@
+# Dependency automation (audit #20).
+#
+# The finding was not "these packages are old" — it was that nothing was
+# WATCHING. This file is the watcher; .github/workflows/audit.yml is the alarm
+# for the case where an advisory lands and no upgrade exists yet.
+#
+# WHY THE GROUPS. Three sets of packages in this project are only ever correct
+# at matching versions, and a per-package pull request would propose exactly the
+# broken intermediate states:
+#
+#   * payload + @payloadcms/* are pinned to one exact version (3.88.0) because
+#     the adapters share internals with the core. A tree holding two of them at
+#     different versions typically fails at runtime, not at install.
+#   * next and eslint-config-next ship as a pair (both 16.3.1), and React and
+#     its @types must move with them.
+#   * the test and lint toolchain is worth reviewing in one sitting rather than
+#     five, since a change there can only break CI, never production.
+#
+# Everything else — graphql, sanitize-html, sharp, the @vercel/* telemetry — is
+# independent and gets its own pull request, which is the easier review.
+#
+# A PAYLOAD MAJOR IS NOT A ROUTINE MERGE. It carries schema changes, so the
+# group's pull request needs a migration written and applied before it can go
+# in. Left un-ignored on purpose: knowing one is waiting is the point.
+#
+# ESLINT 9 IS DEPRECATED ON npm AND STAYS HERE ANYWAY, for now. eslint-config-next
+# 16.3.1 peers `eslint: >=9.0.0`, so 10 is permitted rather than required, and a
+# flat-config major that rewrites rule plumbing is a change whose only possible
+# failure is a red `npm run lint` — exactly the class this group exists to batch.
+# So it is deliberately left to the Monday pull request instead of being taken by
+# hand, and the `npm warn deprecated eslint@9` line on every install is expected,
+# not an oversight. What would make it urgent is an advisory, and audit.yml is
+# what would say so.
+
+version: 2
+
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      # Local time, so the pull requests are waiting at the start of a working
+      # day rather than arriving in the middle of the night.
+      time: "09:00"
+      timezone: "Asia/Dhaka"
+    # Enough for the three groups plus a couple of singles. An unbounded queue
+    # of dependency pull requests is how they all stop being read.
+    open-pull-requests-limit: 6
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(dev-deps)"
+    groups:
+      # Order matters: a dependency joins the first group whose patterns match
+      # it, so these are written to be mutually exclusive and eslint-config-next
+      # is claimed here rather than by the toolchain group below.
+      payload:
+        patterns:
+          - "payload"
+          - "@payloadcms/*"
+      next-react:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      toolchain:
+        patterns:
+          - "eslint"
+          - "typescript"
+          - "vitest"
+          - "@playwright/test"
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "postcss"
+          - "autoprefixer"
+          - "@types/node"
+          - "@types/sanitize-html"
+
+  # The workflows pin action majors (checkout@v4, setup-node@v4,
+  # upload-artifact@v4). This entry is what moves them, so the pins do not
+  # quietly become the versions nobody has looked at since launch.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Dhaka"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(actions)"
+    groups:
+      actions:
+        patterns:
+          - "*"

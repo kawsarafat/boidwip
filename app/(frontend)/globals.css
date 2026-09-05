@@ -1,0 +1,386 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Design tokens.
+
+   Channels only ("20 26 34"), not "rgb(...)", because tailwind.config.ts wraps
+   them as `rgb(var(--canvas) / <alpha-value>)` so opacity modifiers keep
+   working. A full colour function here would compile but silently ignore `/80`.
+
+   The names here are the ONLY vocabulary: tailwind.config.ts maps them 1:1 to
+   utility classes (bg-canvas, text-ink, border-rule, bg-buy…). A variable
+   defined here but absent there is dead; a class used there but undefined here
+   is transparent. Change both files together or neither.
+
+   NOTE: --font-body is deliberately NOT declared here. next/font/google
+   already sets it, scoped to <html> via the .variable class applied in
+   layout.tsx. Redeclaring it at :root with a plain font-name string previously
+   fought with next/font's injected value and won, which is why the intended
+   Bengali face was not actually rendering on the live site — it fell back to
+   the browser default the whole time. (There is no --font-mono any more:
+   `font-mono` resolves to a system stack, see tailwind.config.ts.)
+   --------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  /* Height of the sticky header, declared once here and consumed by the
+     scroll-padding-top rule below and by the `top` of the sticky sidebar.
+     Getting this wrong is not cosmetic: an in-page #link lands with its target
+     hidden behind the header, which reads as a broken anchor. One row on
+     mobile, two on desktop. */
+  --header-h: 3.5rem;
+  /* Header plus a little breathing room, so an anchored heading is not flush
+     against the header's bottom edge. Applied in exactly one rule — see the
+     note on html { scroll-padding-top } below for why nothing else may add it. */
+  --anchor-offset: 4.5rem;
+
+  /* Neutrals are COOL and near-achromatic — a hairline of blue in the greys
+   * (blue channel a few points above red), the exact mirror of the cream cast
+   * this palette used to carry. The cream read as craft-fair rather than as a
+   * publisher: warm beige is what a hobby blog defaults to, and on a page whose
+   * whole job is to look trustworthy enough to click a download or a buy button
+   * it was working against the content. Cool near-white plus a slate ink is the
+   * register of a reference site, and it makes the accent and the two CTA
+   * colours the only chroma on the page — which is what makes them read as
+   * actions rather than as decoration.
+   *
+   * THE ACCENT IS DEEP WINE, and the hue is chosen by elimination rather than
+   * by taste: buy is green and download is blue, both reserved (see
+   * tailwind.config.ts), so a professional accent that cannot be either of
+   * those, cannot be a near-neutral (a slate "accent" makes links stop looking
+   * like links), and has to carry white text at ≥4.5:1 while also being legible
+   * AS text lands in deep red. Wine at 347° is also the traditional colour of a
+   * clothbound book spine, which is the one association this site can use.
+   *
+   * Contrast is measured, not assumed. Every figure below is against
+   * --surface in the same block. */
+  --canvas: 247 248 250; /* #F7F8FA  cool near-white page */
+  --surface: 255 255 255; /* #FFFFFF  cards, the book panel */
+  --surface-sunken: 239 241 245; /* #EFF1F5  inset wells, cover placeholders */
+  --ink: 20 26 34; /* #141A22  body text, 17.5:1 on surface */
+  --ink-muted: 90 100 114; /* #5A6472  secondary text, 6.0:1 on surface */
+  --rule: 223 227 234; /* #DFE3EA  hairlines */
+  --accent: 147 35 59; /* #93233B  wine, 8.3:1 on surface, 8.3:1 under white */
+  --accent-soft: 247 232 235; /* #F7E8EB  wine wash for chips, 7.0:1 vs accent */
+
+  /* The text colour that goes ON an accent fill. It is a token and not a
+     literal `text-white` because the accent is DARK in light mode and LIGHT in
+     dark mode (a deep wine at #93233B would disappear into a slate near-black
+     canvas, so dark mode lifts it to a pale pink). White on that pale pink is
+     2.2:1 — unreadable — so the six accent-filled elements on the site (the
+     primary button, the active filter chip, the skip link, the series order
+     badge and the two chapter numerals) flip their foreground with the theme
+     instead of assuming white. 8.3:1 here, 8.4:1 in .dark. */
+  --on-accent: 255 255 255;
+
+  /* THE TWO RESERVED CTA COLOURS (see tailwind.config.ts). Both carry white
+     text; both stay put across themes because a button is its own surface.
+     Unchanged by the repaint on purpose: a reader who has seen one page already
+     knows what green and blue mean here, and that is the one piece of the
+     palette worth more than its looks. */
+  --buy: 22 122 60; /* #167A3C  green: buy hardcopy (Rokomari) */
+  --download: 29 86 197; /* #1D56C5  blue: free PDF */
+
+  --warn: 143 98 0; /* #8F6200  amber, 5.4:1 — rights notices, stale prices */
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* Dark keeps the cool cast: a slate-blue near-black, not a warm brown one and
+     not pure #000 (which makes white text vibrate on OLED). */
+  --canvas: 15 19 25; /* #0F1319 */
+  --surface: 23 28 36; /* #171C24 */
+  --surface-sunken: 18 23 30; /* #12171E */
+  --ink: 231 234 240; /* #E7EAF0  14.2:1 on surface */
+  --ink-muted: 154 164 178; /* #9AA4B2  6.8:1 on surface */
+  --rule: 42 49 59; /* #2A313B */
+  --accent: 229 154 164; /* #E59AA4  lifted wine, 7.7:1 on surface */
+  --accent-soft: 58 31 38; /* #3A1F26  wine wash */
+  /* Near-black ON the lifted accent: 8.4:1. See the note in :root. */
+  --on-accent: 15 19 25;
+
+  /* CTA surfaces stay the light-mode colours — white-on-green / white-on-blue
+     reads identically over the dark canvas, and the recognition IS the point. */
+  --buy: 24 134 66; /* nudged one step up so the button doesn't sink */
+  --download: 62 111 214;
+
+  --warn: 227 179 65; /* #E3B341  text-warn on dark surfaces, 8.8:1 */
+}
+
+/* The desktop header carries a second row (the category strip), so every
+   header-derived offset grows with it. Same breakpoint as Tailwind's `lg`. */
+@media (min-width: 1024px) {
+  :root {
+    --header-h: 6.25rem;
+    --anchor-offset: 7.25rem;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Stops the sticky header from covering a heading that an in-page #link
+     jumped to. Without it the reader lands on a heading hidden behind the
+     header and has to scroll up, which reads as a broken anchor.
+
+     THIS IS THE ONLY PLACE THE OFFSET IS APPLIED, and it governs every anchor
+     on the site — prose headings, তালিকা entries, anything with an id.
+     scroll-padding-top on the scroller and scroll-margin-top on the target ADD
+     rather than override, so a target that also carries a scroll-margin lands
+     twice the offset down the page. Measured at 1280px: a heading with both
+     settled 232px from the viewport top instead of 116px, leaving a third of a
+     screen of empty canvas above the thing the reader had just asked for. So
+     targets carry no scroll-margin of their own. */
+  scroll-padding-top: var(--anchor-offset);
+  /* Reserves the scrollbar gutter so navigating from a short page to a long
+     one does not shift the whole layout sideways by ~15px on desktop. */
+  scrollbar-gutter: stable;
+}
+
+/* -webkit-tap-highlight-color: the blue-grey flash Android draws over a tapped
+   link. The site has its own :active states; the platform one just looks like a
+   rendering glitch on a card. */
+body {
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------------------------------------------------------------------------
+   Component classes.
+
+   These exist to stop the same fifteen-utility string being repeated in twenty
+   files. That is partly readability, but mostly weight: on a fully static site
+   every class name is bytes in the HTML of every page, and "card" instead of
+   "rounded-xl2 border border-rule bg-surface shadow-card" is a measurable
+   difference across a few hundred cards. Anything used once stays inline.
+   --------------------------------------------------------------------------- */
+@layer components {
+  /* The page's horizontal rhythm, in one place. Every top-level page wrapper
+     uses this so gutters cannot drift between routes. */
+  .shell {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+
+  .card {
+    @apply rounded-xl2 border border-rule bg-surface shadow-card;
+  }
+
+  /* Only for cards that are themselves links. A hover lift on a non-clickable
+     panel promises an interaction that isn't there. */
+  .card-interactive {
+    @apply card transition duration-200 hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-card-hover;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition;
+    /* 44px minimum touch target — the size a thumb can actually hit. Smaller
+       buttons are the single most common mobile usability failure. */
+    min-height: 2.75rem;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-on-accent hover:brightness-110 active:brightness-95;
+  }
+
+  .btn-secondary {
+    @apply btn border border-ink/20 bg-surface text-ink hover:bg-surface-sunken;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-muted hover:bg-surface-sunken hover:text-ink;
+  }
+
+  /* THE TWO RESERVED CTAs. These are the only elements on the site allowed to
+     wear green or blue — see the token block in tailwind.config.ts. */
+  .btn-buy {
+    @apply btn bg-buy text-white hover:brightness-110 active:brightness-95;
+  }
+
+  .btn-download {
+    @apply btn bg-download text-white hover:brightness-110 active:brightness-95;
+  }
+
+  /* Small pill used for category / rights-tier / count labels. */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-rule bg-surface-sunken px-3 py-1 text-xs font-medium text-ink-muted transition;
+  }
+
+  /* Interactive chips only, selected by element rather than by an extra class
+     because the same .chip is also a static label (the question-type badge in
+     an article header, the count pill on a subject card) and those should stay
+     tight to their text.
+     A bare .chip comes out 26px tall, which clears WCAG 2.5.8's 24px AA floor
+     on paper and still misses under a thumb. The ones that are actually tapped
+     are the share row and the search filters, both of which sit in a wrapped
+     flex row on a phone, so they get a real target. */
+  a.chip,
+  button.chip {
+    @apply min-h-[2.25rem];
+  }
+
+  .chip-active {
+    @apply border-accent bg-accent text-on-accent;
+  }
+
+  .section-title {
+    @apply text-xl font-extrabold tracking-tight text-ink sm:text-2xl;
+  }
+
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-widest text-accent;
+  }
+
+  /* Sticky rail for the desktop sidebar and the table of contents. Offset by
+     the header's own height rather than a magic number, so the two cannot
+     drift apart when the header changes.
+     Desktop-only by definition, not by a `lg:` variant at the call site: on a
+     phone the rail is just the next block down the page, and a sticky element
+     there would park itself on top of the article. */
+  .sticky-aside {
+    position: static;
+  }
+
+  @media (min-width: 1024px) {
+    .sticky-aside {
+      position: sticky;
+      top: calc(var(--header-h) + 1rem);
+    }
+  }
+
+  /* Skip link: visually hidden until focused, which is what makes it useful to
+     a keyboard user and invisible to everyone else. */
+  .skip-link {
+    @apply sr-only;
+  }
+
+  .skip-link:focus-visible {
+    @apply not-sr-only fixed left-4 top-4 z-[100] rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Article prose (Tailwind Typography), driven by the same tokens as everything
+   else rather than by a hardcoded palette. The previous version set literal
+   hex values twice (light and .dark) and both had drifted away from the theme.
+   --------------------------------------------------------------------------- */
+.prose-book {
+  --tw-prose-body: rgb(var(--ink));
+  --tw-prose-headings: rgb(var(--ink));
+  --tw-prose-lead: rgb(var(--ink-muted));
+  --tw-prose-bold: rgb(var(--ink));
+  --tw-prose-links: rgb(var(--accent));
+  --tw-prose-counters: rgb(var(--ink-muted));
+  --tw-prose-bullets: rgb(var(--accent));
+  --tw-prose-hr: rgb(var(--rule));
+  --tw-prose-quotes: rgb(var(--ink));
+  --tw-prose-quote-borders: rgb(var(--accent));
+  --tw-prose-captions: rgb(var(--ink-muted));
+  --tw-prose-code: rgb(var(--ink));
+  --tw-prose-pre-code: rgb(var(--ink));
+  --tw-prose-pre-bg: rgb(var(--surface-sunken));
+  --tw-prose-th-borders: rgb(var(--ink) / 0.25);
+  --tw-prose-td-borders: rgb(var(--rule));
+}
+
+/* `prose` sets bold text to its own heading colour, which fights the token. */
+.prose-book :where(strong):not(:where([class~="not-prose"] *)) {
+  color: inherit;
+}
+
+/* Section headings inside a chapter body carry most of the page's
+   scannability on a phone, so they get a visible left rule rather than
+   relying on size alone. Scoped to the prose wrapper so it can never affect
+   page furniture.
+
+   No scroll-margin-top here: the html rule above already offsets every anchor,
+   and both together put a TOC jump twice as far down the page. See the note
+   there. */
+.prose-book :where(h2):not(:where([class~="not-prose"] *)) {
+  border-left: 3px solid rgb(var(--accent));
+  padding-left: 0.75rem;
+}
+
+/* No h3 rule any more. It existed only to set the same scroll-margin-top, which
+   is now the html rule's job alone — see the note there. An h3 keeps the size
+   and weight `prose` gives it. */
+
+/* Tables written in the CMS. Payload's Lexical converter wraps every table in
+   <div class="lexical-table-container">, and the sanitizer in lib/render.ts
+   keeps that wrapper specifically so this rule has something to hang on.
+   Without it a wide table — a printed-TOC table, an edition comparison —
+   forces the whole article wider than the phone screen and breaks the layout
+   for every element on it, not just the table. Scrolling one container
+   sideways is the contained version of that problem. */
+.lexical-table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Hints to the browser (and to the reader on a trackpad) that this box is
+     the thing that scrolls, not the page. */
+  overscroll-behavior-x: contain;
+}
+
+/* Visible keyboard focus. One rule from a token, so it cannot go missing in
+   one theme the way a `dark:` variant can. */
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Print. Readers print chapter pages of public-domain books — and an unstyled
+   print of a card-based layout wastes several pages on chrome. Cheap to get
+   right, and it is content this site is judged on.
+   --------------------------------------------------------------------------- */
+@media print {
+  /* Anything marked no-print is navigation, ads, or a control that cannot do
+     anything on paper. */
+  .no-print,
+  header,
+  footer,
+  aside {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .card,
+  .card-interactive {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* A heading stranded at the foot of a page, with its section overleaf, is
+     the specific thing that makes a printed chapter hard to read. */
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Reveals link targets that are otherwise lost on paper, but only for real
+     external references — printing "(/physics)" after every nav link is noise. */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.75em;
+    word-break: break-all;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

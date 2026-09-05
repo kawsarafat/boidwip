@@ -1,0 +1,24 @@
+# Line endings are a CI correctness problem here, not a style preference.
+#
+# This project is developed on Windows, so every file in the working tree has
+# CRLF endings. CI runs on Linux, and .github/workflows/ci.yml checks that two
+# COMMITTED, GENERATED files — payload-types.ts and the admin import map — still
+# match what their generators produce. Regenerate a CRLF file on Linux and every
+# line of it differs, so that check would fail on every run for a reason that
+# has nothing to do with the code.
+#
+# `text=auto` fixes it at the only layer that can: git stores text files with LF
+# and converts back to the platform's native ending on checkout, so Windows
+# still gets CRLF locally, Linux gets LF, and the generators agree with the
+# repository on both. Content detection leaves real binaries (the covers, the
+# fonts, the PDFs) untouched.
+#
+# Without this file the check depends on each contributor's core.autocrlf
+# setting, which is exactly the kind of invisible per-machine difference the
+# audit's CI section exists to remove.
+* text=auto
+
+# Written and read by tools that only ever emit LF, on any platform.
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
